@@ -4,7 +4,8 @@ import { schemaPorId } from '../modulos/index.js';
 import { fmtValor, campoVisivel, htmlAlerta, limparCacheRef } from '../form.js';
 import { renderAnexos } from '../anexos.js';
 import { linhaRegistro } from './lista.js';
-import { $, esc, html, icone, fmtDataHora, toast, mensagemErro } from '../util.js';
+import { telefones, textoQuando, situacao, botaoWhatsapp, linkRegistrar, encerrarAgenda } from '../agenda.js';
+import { $, esc, html, icone, fmtData, fmtDataHora, toast, mensagemErro } from '../util.js';
 
 export async function paginaDetalhe(main, schema, id) {
   const d = await db.obter(schema.id, id);
@@ -30,6 +31,7 @@ export async function paginaDetalhe(main, schema, id) {
       </div>
     </div>
     ${htmlAlerta(schema.alerta?.(d))}
+    <div data-agenda></div>
     <section class="cartao">
       <dl class="campos">
         ${campos.map(({ c, v }) => `<div class="${longos(c) ? 'largo' : ''}"><dt>${esc(c.rot)}</dt><dd class="${longos(c) ? 'texto-longo' : ''}">${esc(v)}</dd></div>`).join('')}
@@ -55,8 +57,33 @@ export async function paginaDetalhe(main, schema, id) {
     } catch (e) { toast(mensagemErro(e), 'erro'); }
   };
 
+  if (schema.agenda && d.agendaPendente) await blocoAgenda($('[data-agenda]', pagina), schema, d);
   if (schema.id === 'clientes') await historicoCliente($('[data-extra]', pagina), d);
   await renderAnexos($('[data-anexos]', pagina), schema.id, id, { podeAnexar: podeEditar(schema) });
+}
+
+// Próxima aplicação agendada: avisar pelo WhatsApp, registrar ou encerrar o agendamento.
+async function blocoAgenda(el, schema, d) {
+  const tels = await telefones().catch(() => new Map());
+  const quando = textoQuando(d.proxima);
+  const bloco = html(`<section class="agenda-detalhe ${situacao(d)}">
+    <div class="agenda-detalhe-texto">${icone('calendar-event')}
+      <span>Próxima aplicação: <b>${fmtData(d.proxima)}</b> (${esc(quando)})</span></div>
+    <div class="botoes">
+      ${botaoWhatsapp(d, tels.get(d.clienteId), true)}
+      ${podeEditar(schema) ? `<a class="btn" href="${linkRegistrar(schema.id, d)}">${icone('check')} Registrar aplicação</a>
+      <button type="button" class="btn" data-encerrar>${icone('calendar-off')} Encerrar agendamento</button>` : ''}
+    </div></section>`);
+  el.append(bloco);
+  const encerrar = $('[data-encerrar]', bloco);
+  if (encerrar) encerrar.onclick = async () => {
+    if (!confirm('Encerrar este agendamento? Ele sai da lista de aplicações agendadas.')) return;
+    try {
+      await encerrarAgenda(schema.id, d.id);
+      toast('Agendamento encerrado');
+      bloco.remove();
+    } catch (e) { toast(mensagemErro(e), 'erro'); }
+  };
 }
 
 // Histórico do cliente: aferições, aplicações e atendimentos que o usuário pode ver.

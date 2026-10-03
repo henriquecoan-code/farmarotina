@@ -1,6 +1,7 @@
 import { db } from '../db.js';
 import { podeEditar } from '../perm.js';
 import { renderForm, limparCacheRef } from '../form.js';
+import { prepararAgenda, concluirAnteriores } from '../agenda.js';
 import { esc, html, icone, toast } from '../util.js';
 
 export async function paginaEditar(main, schema, id, query) {
@@ -17,7 +18,7 @@ export async function paginaEditar(main, schema, id, query) {
     }
   } else {
     // Pré-preenchimento vindo da URL, ex.: #/m/afericoes/novo?clienteId=...&clienteNome=...
-    for (const [k, v] of query) dados[k] = v;
+    for (const [k, v] of query) dados[k] = v === 'true' ? true : v;
   }
 
   const voltar = id ? `#/m/${schema.id}/${id}` : `#/m/${schema.id}`;
@@ -31,10 +32,12 @@ export async function paginaEditar(main, schema, id, query) {
   pagina.querySelector('[data-form]').append(renderForm(schema, dados, {
     onCancelar: () => { location.hash = voltar; },
     onSalvar: async (vals) => {
+      if (schema.agenda) vals = prepararAgenda(vals, id ? dados : null);
       let novoId = id;
       let status;
       if (id) ({ status } = await db.atualizar(schema.id, id, vals));
       else ({ id: novoId, status } = await db.criar(schema.id, vals));
+      if (schema.agenda && !id) await concluirAnteriores(schema.id, novoId, vals, query.get('origem'));
       limparCacheRef(schema.id);
       toast(status === 'pendente' ? 'Salvo offline; será sincronizado quando houver internet' : 'Salvo', 'ok');
       location.hash = `#/m/${schema.id}/${novoId}`;

@@ -1,8 +1,9 @@
 // Backend de demonstração: mesma interface do backend-firebase.js,
 // mas guarda tudo no localStorage deste navegador. Serve para testar o app sem Firebase.
 import { agoraLocal, diasAtras, hoje } from './util.js';
+import { calcularProxima } from './modulos/saude.js';
 
-const CHAVE = 'farmarotina-demo-v2';
+const CHAVE = 'farmarotina-demo-v3';
 const SESSAO = 'farmarotina-demo-sessao';
 const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'pops'];
 
@@ -43,7 +44,16 @@ function semente() {
   add('afericoes', { clienteId: joao, clienteNome: 'João Pereira', dataHora: h(0, '08:40'), tipo: 'Glicemia', glicemia: 98, momento: 'Jejum' });
   add('afericoes', { clienteId: maria, clienteNome: 'Maria Souza', dataHora: h(7, '10:05'), tipo: 'Pressão', pas: 138, pad: 88, fc: 76 });
   add('afericoes', { clienteId: carla, clienteNome: 'Carla Mendes', dataHora: h(1, '15:30'), tipo: 'Oximetria', spo2: 97, fc: 70 });
-  add('injetaveis', { clienteId: carla, clienteNome: 'Carla Mendes', dataHora: h(0, '10:20'), medicamento: 'Benzilpenicilina benzatina 1.200.000 UI', lote: 'BZ2291', validade: '2027-03-31', via: 'IM', local: 'Glúteo', receita: true, prescritor: 'Dra. Lima', registroProf: 'CRM 123456' });
+  // Aplicações recorrentes: uma futura, uma para hoje e uma atrasada
+  const injetavel = (d, concluida = false) => {
+    const proxima = calcularProxima(d);
+    add('injetaveis', { ...d, proxima, agendaPendente: !!proxima && !concluida, agendaConcluida: concluida });
+  };
+  const benzetacil = { clienteId: carla, clienteNome: 'Carla Mendes', medicamento: 'Benzilpenicilina benzatina 1.200.000 UI', lote: 'BZ2291', validade: '2027-03-31', via: 'IM', local: 'Glúteo', receita: true, prescritor: 'Dra. Lima', registroProf: 'CRM 123456', intervalo: 'Semanal', totalDoses: 3 };
+  injetavel({ ...benzetacil, dataHora: h(7, '10:15'), dose: 1 }, true);
+  injetavel({ ...benzetacil, dataHora: h(0, '10:20'), dose: 2 });
+  injetavel({ clienteId: maria, clienteNome: 'Maria Souza', dataHora: h(2, '09:30'), medicamento: 'Cianocobalamina 5.000 mcg', lote: 'CN7781', validade: '2027-08-31', via: 'IM', local: 'Deltoide', receita: true, prescritor: 'Dr. Alves', intervalo: 'A cada 2 dias', dose: 2, totalDoses: 5 });
+  injetavel({ clienteId: joao, clienteNome: 'João Pereira', dataHora: `${diasAtras(33)}T16:00`, medicamento: 'Decanoato de haloperidol 50 mg', lote: 'HD0042', validade: '2027-01-31', via: 'IM', local: 'Glúteo', receita: true, intervalo: 'Mensal' });
 
   for (let d = 6; d >= 0; d--) {
     add('temperatura', { dataHora: h(d, '08:00'), turno: 'Manhã', local: 'Geladeira', atual: 4.5 + (d % 3) * 0.6, min: 3.1, max: 6.2 });

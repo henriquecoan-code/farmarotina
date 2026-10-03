@@ -390,3 +390,40 @@ input[type=checkbox], input[type=radio] { width: auto; min-height: 0; accent-col
   .assinatura { margin-top: 28px; }
   @page { margin: 12mm; }
 }
+
+/* ---------- agenda de aplicações ---------- */
+.subtitulo { font-size: 16px; color: var(--texto-2); margin-top: 8px; }
+.agenda-secao { display: flex; flex-direction: column; gap: 10px; }
+.agenda-lista { display: flex; flex-direction: column; gap: 8px; }
+.agenda-lista > .vazio { background: var(--superficie); border: 1px dashed var(--borda-forte); border-radius: 14px; }
+.agenda {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px;
+  padding: 10px 12px 10px 16px; border-radius: 14px;
+  background: var(--superficie); border: 1px solid var(--borda); border-left: 4px solid var(--pri);
+}
+.agenda.hoje { background: var(--atencao-bg); border-color: var(--atencao-borda); }
+.agenda.atrasado { background: var(--perigo-bg); border-color: var(--perigo-borda); }
+.agenda-texto { min-width: 0; text-decoration: none; color: inherit; }
+.agenda-texto .linha-sub { white-space: normal; }
+.agenda-data { display: flex; flex-direction: column; align-items: flex-end; font-size: 13px; line-height: 1.3; }
+.agenda-data b { font-size: 16px; }
+.agenda.hoje .agenda-data span { color: var(--atencao); font-weight: 600; }
+.agenda.atrasado .agenda-data span { color: var(--perigo); font-weight: 600; }
+.agenda-acoes { display: flex; gap: 6px; }
+.agenda-acoes .so-celular { display: none; }
+.btn.whats { background: #25d366; border-color: #25d366; color: #0b3d20; }
+.btn.whats:hover { background: #1fb959; }
+.btn.whats:disabled { background: var(--superficie-2); border-color: var(--borda-forte); color: var(--mudo); cursor: not-allowed; }
+.agenda-detalhe {
+  display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px;
+  padding: 12px 14px; border-radius: var(--raio); background: var(--pri-claro); border: 1px solid var(--pri);
+}
+.agenda-detalhe.hoje { background: var(--atencao-bg); border-color: var(--atencao-borda); }
+.agenda-detalhe.atrasado { background: var(--perigo-bg); border-color: var(--perigo-borda); }
+.agenda-detalhe-texto { display: flex; align-items: center; gap: 8px; }
+@media (max-width: 520px) {
+  .agenda { grid-template-columns: minmax(0, 1fr) auto; }
+  .agenda-acoes { grid-column: 1 / -1; justify-content: flex-end; }
+  .agenda-acoes .btn.icone { width: auto; padding: 0 16px; }
+  .agenda-acoes .so-celular { display: inline; }
+}

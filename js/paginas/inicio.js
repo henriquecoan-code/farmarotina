@@ -3,6 +3,7 @@ import { podeVer, podeEditar, obterPerfilAtual } from '../perm.js';
 import { schemaPorId, visiveis } from '../modulos/index.js';
 import { FAIXAS, turnoAtual } from '../modulos/temperatura.js';
 import { linhaRegistro } from './lista.js';
+import { listarAgendadas, situacao } from '../agenda.js';
 import { esc, html, icone, hoje, fmtNum, fmtDataHora } from '../util.js';
 
 // "hoje 08:00" ou "02/10 16:00"
@@ -41,12 +42,13 @@ export async function paginaInicio(main) {
   const avisos = pagina.querySelector('.avisos');
   const dia = hoje();
 
-  const [temps, afericoesHoje, atendAbertos, notasRec, inj] = await Promise.all([
+  const [temps, afericoesHoje, atendAbertos, notasRec, inj, agendadas] = await Promise.all([
     podeVer('temperatura') ? seguro(db.listar('temperatura', { limite: 30 })) : null,
     podeVer('saude') ? seguro(db.listar('afericoes', { de: dia, ate: dia })) : null,
     podeVer('atendimento') ? seguro(db.listar('atendimentos', { onde: ['status', 'Aberto'] })) : null,
     podeVer('notas') ? seguro(db.listar('notas', { limite: 200 })) : null,
     podeVer('saude') ? seguro(db.listar('injetaveis', { limite: 10 })) : null,
+    podeVer('saude') ? seguro(listarAgendadas('injetaveis')) : null,
   ]);
 
   const cards = [];
@@ -75,6 +77,17 @@ export async function paginaInicio(main) {
     cards.push(cartaoNumero({
       rotulo: 'Aferições hoje', valor: afericoesHoje.length,
       selo: alteradas ? `${alteradas} alterada(s)` : 'Nenhuma alterada', nivel: alteradas ? 'atencao' : 'ok', href: '#/m/afericoes',
+    }));
+  }
+  if (agendadas) {
+    const deHoje = agendadas.filter((d) => situacao(d) === 'hoje').length;
+    const atrasadas = agendadas.filter((d) => situacao(d) === 'atrasado').length;
+    if (atrasadas) avisos.append(html(`<a class="alerta perigo" href="#/m/injetaveis">${icone('vaccine')}<span>${atrasadas} aplicação(ões) atrasada(s). Avise o cliente pelo WhatsApp.</span>${icone('chevron-right')}</a>`));
+    if (deHoje) avisos.append(html(`<a class="alerta atencao" href="#/m/injetaveis">${icone('vaccine')}<span>${deHoje} aplicação(ões) agendada(s) para hoje.</span>${icone('chevron-right')}</a>`));
+    cards.push(cartaoNumero({
+      rotulo: 'Aplicações agendadas', valor: agendadas.length,
+      selo: [deHoje && `${deHoje} hoje`, atrasadas && `${atrasadas} atrasada(s)`].filter(Boolean).join(' · ') || 'Nada para hoje',
+      nivel: atrasadas ? 'perigo' : deHoje ? 'atencao' : 'ok', href: '#/m/injetaveis',
     }));
   }
   if (atendAbertos) {

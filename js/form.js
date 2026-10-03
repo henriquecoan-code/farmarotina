@@ -36,7 +36,7 @@ export function htmlAlerta(a) {
 // ---------- seletor de registro relacionado (cliente, fornecedor) ----------
 const cacheRef = new Map();
 export function limparCacheRef(col) { cacheRef.delete(col); }
-function carregarRef(col) {
+export function carregarRef(col) {
   if (!cacheRef.has(col)) {
     cacheRef.set(col, db.listar(col, { ordem: 'nome', desc: false, limite: 2000 }).catch(() => []));
   }
@@ -145,7 +145,7 @@ function controle(campo, valor, dados) {
       const tipo = { data: 'date', datahora: 'datetime-local', hora: 'time' }[campo.tipo];
       const el = html(`<input type="${tipo}" name="${k}">`);
       el.value = valor ?? '';
-      return { el, get: () => el.value || null };
+      return { el, get: () => el.value || null, set: (x) => { el.value = x ?? ''; } };
     }
     case 'simnao': {
       const el = html(`<label class="check"><input type="checkbox" name="${k}"><span>${esc(campo.rot)}</span></label>`);
@@ -221,8 +221,23 @@ export function renderForm(schema, dados = {}, { onSalvar, onCancelar, rotuloSal
     return v;
   }
 
+  // Campos calculados (ex.: próxima aplicação): recalculam sozinhos até o usuário alterá-los à mão.
+  const calculados = new Set(Object.keys(schema.calcular?.({}) || {}));
+  const manuais = new Set();
+  if (schema.calcular) {
+    const calc = schema.calcular(inicial);
+    for (const k of calculados) if (!vazio(inicial[k]) && inicial[k] !== calc[k]) manuais.add(k);
+  }
+
   function atualizar() {
     const v = ler();
+    if (schema.calcular) {
+      for (const [k, val] of Object.entries(schema.calcular(v))) {
+        if (manuais.has(k)) continue;
+        controles.find((c) => c.campo.k === k)?.ctl.set?.(val);
+        v[k] = val;
+      }
+    }
     for (const { campo, wrap } of controles) wrap.hidden = !campoVisivel(campo, v);
     $('.previa-alerta', form).innerHTML = htmlAlerta(schema.alerta?.(v));
   }
@@ -231,6 +246,12 @@ export function renderForm(schema, dados = {}, { onSalvar, onCancelar, rotuloSal
     if (wrap?.classList.contains('com-erro')) {
       wrap.classList.remove('com-erro');
       $('.erro-campo', wrap).textContent = '';
+    }
+    const k = wrap?.dataset.k;
+    if (calculados.has(k)) {
+      // Apagar o campo devolve o cálculo automático
+      if (e.target.value) manuais.add(k);
+      else manuais.delete(k);
     }
     atualizar();
   };

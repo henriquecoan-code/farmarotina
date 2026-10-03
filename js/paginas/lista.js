@@ -1,6 +1,7 @@
 import { db } from '../db.js';
 import { podeEditar } from '../perm.js';
 import { exportarCSV, imprimir } from '../export.js';
+import { listarAgendadas, telefones, cartaoAgenda } from '../agenda.js';
 import { $, esc, html, icone, normalizar, fmtData, mensagemErro } from '../util.js';
 
 const filtrosSalvos = {}; // lembra o filtro de cada módulo enquanto o app está aberto
@@ -27,6 +28,11 @@ export async function paginaLista(main, schema) {
       <h1>${icone(schema.icone)} ${esc(schema.nome)}</h1>
       ${podeEditar(schema) ? `<a class="btn pri" href="#/m/${schema.id}/novo">${icone('plus')} ${esc(schema.novo)}</a>` : ''}
     </div>
+    ${schema.agenda ? `<section class="agenda-secao">
+      <h2>${icone('calendar-event')} Agendadas <span class="mudo" data-agenda-total></span></h2>
+      <div class="agenda-lista"><div class="vazio">${icone('loader-2 girar')} Carregando…</div></div>
+    </section>
+    <h2 class="subtitulo">${icone('history')} Aplicações realizadas</h2>` : ''}
     <div class="filtros">
       <div class="busca">${icone('search')}<input type="search" placeholder="Buscar" value="${esc(f.busca)}" data-f="busca"></div>
       ${porData ? `<label class="filtro-data">De <input type="date" value="${f.de}" data-f="de"></label>
@@ -85,5 +91,19 @@ export async function paginaLista(main, schema) {
   $('[data-imprimir]', main).onclick = () =>
     imprimir(schema, filtrados(), [f.de && `de ${fmtData(f.de)}`, f.ate && `até ${fmtData(f.ate)}`].filter(Boolean).join(' '));
 
-  await carregar();
+  await Promise.all([carregar(), schema.agenda ? carregarAgenda(main, schema) : null]);
+}
+
+async function carregarAgenda(main, schema) {
+  const el = $('.agenda-lista', main);
+  try {
+    const [agendadas, tels] = await Promise.all([listarAgendadas(schema.id), telefones()]);
+    $('[data-agenda-total]', main).textContent = agendadas.length ? `(${agendadas.length})` : '';
+    el.innerHTML = agendadas.length
+      ? agendadas.map((d) => cartaoAgenda(schema.id, d, tels.get(d.clienteId))).join('')
+      : '<div class="vazio">Nenhuma aplicação agendada. Ao registrar uma aplicação, escolha em "Repetir" o intervalo.</div>';
+  } catch (e) {
+    console.error(e);
+    el.innerHTML = `<div class="vazio">${esc(mensagemErro(e))}</div>`;
+  }
 }
