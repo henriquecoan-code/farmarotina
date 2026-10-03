@@ -32,22 +32,21 @@ const ddmm = (iso) => fmtData(iso).slice(0, 5);
 export function mensagemWhatsapp(d) {
   const nome = String(d.clienteNome || '').trim().split(/\s+/)[0] || '';
   const farmacia = config.NOME_FARMACIA ? `da ${config.NOME_FARMACIA}` : 'da farmácia';
-  const med = d.medicamento ? ` de ${d.medicamento}` : '';
   const ola = `Olá${nome ? ', ' + nome : ''}! Aqui é ${farmacia}.`;
   const n = diasAte(d.proxima);
 
   if (n < 0) {
-    return `${ola} A sua aplicação${med} estava prevista para ${ddmm(d.proxima)} e ainda não foi feita. `
+    return `${ola} A sua aplicação estava prevista para ${ddmm(d.proxima)} e ainda não foi feita. `
       + 'Para manter o tratamento em dia, venha assim que puder ou responda esta mensagem para combinarmos o melhor horário.';
   }
   if (n === 0) {
-    return `${ola} Hoje, ${ddmm(d.proxima)}, é o dia da sua aplicação${med}. Estamos te esperando! `
+    return `${ola} Hoje, ${ddmm(d.proxima)}, é o dia da sua aplicação. Estamos te esperando! `
       + 'Se precisar remarcar, é só responder esta mensagem.';
   }
   const quando = n === 1
     ? `amanhã, ${diaSemana(d.proxima)}, ${ddmm(d.proxima)}`
     : `${diaSemana(d.proxima)}, ${ddmm(d.proxima)} (daqui a ${n} dias)`;
-  return `${ola} Passando para lembrar que a sua próxima aplicação${med} está marcada para ${quando}. `
+  return `${ola} Passando para lembrar que a sua próxima aplicação está marcada para ${quando}. `
     + 'Qualquer dúvida, é só responder esta mensagem. Até lá!';
 }
 

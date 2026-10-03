@@ -1,7 +1,7 @@
 // Service worker: permite abrir o app sem internet.
 // Arquivos do próprio site: tenta a rede primeiro (para pegar atualizações) e cai no cache se estiver offline.
 // Os dados ficam a cargo do cache offline do Firestore, não daqui.
-const CACHE = 'farmarotina-v1';
+const CACHE = 'farmarotina-v2';
 const EXTERNOS = ['https://cdn.jsdelivr.net/', 'https://www.gstatic.com/firebasejs/'];
 
 self.addEventListener('install', (e) => {
@@ -32,7 +32,8 @@ self.addEventListener('fetch', (e) => {
     return;
   }
 
-  e.respondWith(fetch(req).then((resp) => {
+  // cache: 'no-cache' pede ao servidor a versão atual (sem isso o navegador reaproveita arquivos antigos após uma atualização)
+  e.respondWith(fetch(req, { cache: 'no-cache' }).then((resp) => {
     if (resp.ok) {
       const copia = resp.clone();
       caches.open(CACHE).then((c) => c.put(req, copia));

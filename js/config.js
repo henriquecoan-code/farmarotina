@@ -6,7 +6,7 @@ export const NOME_APP = 'FarmaRotina';
 
 // Nome da farmácia usado nas mensagens de WhatsApp ("Olá, Maria! Aqui é da Farmácia Exemplo.").
 // Deixe vazio para usar só "da farmácia".
-export const NOME_FARMACIA = '';
+export const NOME_FARMACIA = 'Farmácia São Benedito';
 
 export const firebaseConfig = {
   apiKey: "AIzaSyDCb39Foro39c4NrGZjIDfIi3u43ccV-kw",

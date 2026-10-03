@@ -82,9 +82,12 @@ export function paginaLogin(raiz) {
 
 export function paginaPendente(raiz, perfil) {
   raiz.innerHTML = '';
+  const removido = perfil?.excluido === true;
   const tela = html(`<div class="tela-entrada"><div class="cartao entrada">
-    <div class="marca grande">${icone('hourglass')} Aguardando aprovação</div>
-    <p>Olá, ${esc(perfil?.nome || '')}. Sua conta foi criada. Peça ao administrador da farmácia para liberar o seu acesso e os módulos que você vai usar.</p>
+    <div class="marca grande">${icone(removido ? 'user-off' : 'hourglass')} ${removido ? 'Acesso removido' : 'Aguardando aprovação'}</div>
+    <p>Olá, ${esc(perfil?.nome || '')}. ${removido
+      ? 'Seu acesso ao app foi removido pelo administrador. Se isso for um engano, fale com o administrador da farmácia.'
+      : 'Sua conta foi criada. Peça ao administrador da farmácia para liberar o seu acesso e os módulos que você vai usar.'}</p>
     <div class="botoes"><button type="button" class="btn" data-recarregar>${icone('refresh')} Verificar de novo</button>
     <button type="button" class="btn" data-sair>${icone('logout')} Sair</button></div></div></div>`);
   raiz.append(tela);
