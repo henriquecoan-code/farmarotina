@@ -3,13 +3,69 @@ import { podeVer, podeEditar, obterPerfilAtual } from '../perm.js';
 import { schemaPorId, visiveis } from '../modulos/index.js';
 import { FAIXAS, turnoAtual } from '../modulos/temperatura.js';
 import { linhaRegistro } from './lista.js';
-import { listarAgendadas, situacao } from '../agenda.js';
-import { esc, html, icone, hoje, fmtNum, fmtDataHora } from '../util.js';
+import {
+  listarAgendadas, situacao, diasAte, telefones, cartaoAgenda, cartaoPrazo, botaoWhatsapp, mensagemRetorno,
+} from '../agenda.js';
+import { esc, html, icone, hoje, fmtNum, fmtDataHora, toast, mensagemErro } from '../util.js';
 
 // "hoje 08:00" ou "02/10 16:00"
 function quando(iso) {
   const s = fmtDataHora(iso);
   return String(iso).startsWith(hoje()) ? `hoje ${s.slice(11)}` : `${s.slice(0, 5)} ${s.slice(11)}`;
+}
+
+const DIAS_AGENDA = 7;
+const resumo = (s, n = 80) => (String(s || '').length > n ? String(s).slice(0, n - 1) + '…' : String(s || ''));
+
+// Tudo que tem prazo, num lugar só: aplicações agendadas, lembretes de anotações e retornos de atendimento.
+async function montarAgenda(secao, { agendadas, notasRec, atendAbertos }) {
+  if (!agendadas && !notasRec && !atendAbertos) return;
+  secao.hidden = false;
+  const tels = await telefones().catch(() => new Map());
+  const itens = [];
+
+  for (const d of agendadas || []) {
+    itens.push({ data: d.proxima, html: cartaoAgenda('injetaveis', d, tels.get(d.clienteId), 'Aplicação') });
+  }
+  const podeResolverNota = podeEditar(schemaPorId('notas'));
+  for (const n of (notasRec || []).filter((x) => x.lembrete && !x.resolvido)) {
+    itens.push({ data: n.lembrete, html: cartaoPrazo({
+      data: n.lembrete, etiqueta: 'Anotação', genero: 'o', titulo: n.titulo, sub: resumo(n.texto), href: `#/m/notas/${n.id}`,
+      acoes: podeResolverNota ? `<button type="button" class="btn icone" data-resolver="${esc(n.id)}" title="Marcar como resolvido" aria-label="Marcar como resolvido">${icone('check')}<span class="so-celular">Resolvido</span></button>` : '',
+    }) });
+  }
+  const podeResolverAtend = podeEditar(schemaPorId('atendimentos'));
+  for (const a of (atendAbertos || []).filter((x) => x.retorno)) {
+    itens.push({ data: a.retorno, html: cartaoPrazo({
+      data: a.retorno, etiqueta: 'Retorno', genero: 'o', titulo: `${a.tipo} · ${a.clienteNome || 'Sem cliente'}`,
+      sub: resumo(a.descricao), href: `#/m/atendimentos/${a.id}`,
+      acoes: `${a.clienteId ? botaoWhatsapp(a, tels.get(a.clienteId), false, mensagemRetorno(a)) : ''}
+        ${podeResolverAtend ? `<a class="btn icone" href="#/m/atendimentos/${a.id}/editar" title="Registrar a solução" aria-label="Registrar a solução">${icone('check')}<span class="so-celular">Resolver</span></a>` : ''}`,
+    }) });
+  }
+
+  itens.sort((a, b) => String(a.data).localeCompare(String(b.data)));
+  const proximos = itens.filter((i) => diasAte(i.data) <= DIAS_AGENDA);
+  const depois = itens.length - proximos.length;
+  secao.querySelector('[data-total]').textContent = proximos.length ? `(${proximos.length})` : '';
+  secao.querySelector('.agenda-lista').innerHTML = proximos.length
+    ? proximos.map((i) => i.html).join('')
+    : `<div class="vazio">Nada com prazo para os próximos ${DIAS_AGENDA} dias.</div>`;
+  secao.querySelector('[data-mais]').textContent = depois ? `E mais ${depois} item(ns) depois disso.` : '';
+
+  secao.addEventListener('click', async (e) => {
+    const b = e.target.closest('[data-resolver]');
+    if (!b) return;
+    b.disabled = true;
+    try {
+      await db.atualizar('notas', b.dataset.resolver, { resolvido: true });
+      b.closest('.agenda').remove();
+      toast('Lembrete marcado como resolvido', 'ok');
+    } catch (err) {
+      b.disabled = false;
+      toast(mensagemErro(err), 'erro');
+    }
+  });
 }
 
 const seguro =(p) => p.catch((e) => { console.error(e); return []; });
@@ -35,6 +91,12 @@ export async function paginaInicio(main) {
     <div class="metricas"></div>
     <div class="atalhos">${visiveis().filter(podeEditar).filter((s) => s.id !== 'pops')
       .map((s) => `<a class="atalho" href="#/m/${s.id}/novo">${icone(s.icone)}<span>${esc(s.novo)}</span></a>`).join('')}</div>
+    <section class="agenda-secao" data-agenda hidden>
+      <div><h2>${icone('calendar-event')} Agenda <span class="mudo" data-total></span></h2>
+      <p class="mudo pequeno">Atrasados, hoje e próximos ${DIAS_AGENDA} dias</p></div>
+      <div class="agenda-lista"></div>
+      <p class="mudo pequeno" data-mais></p>
+    </section>
     <section class="cartao recentes" hidden><div class="cartao-topo"><h2>Últimos registros</h2></div><div class="lista"></div></section>
   </div>`);
   main.append(pagina);
@@ -82,8 +144,6 @@ export async function paginaInicio(main) {
   if (agendadas) {
     const deHoje = agendadas.filter((d) => situacao(d) === 'hoje').length;
     const atrasadas = agendadas.filter((d) => situacao(d) === 'atrasado').length;
-    if (atrasadas) avisos.append(html(`<a class="alerta perigo" href="#/m/injetaveis">${icone('vaccine')}<span>${atrasadas} aplicação(ões) atrasada(s). Avise o cliente pelo WhatsApp.</span>${icone('chevron-right')}</a>`));
-    if (deHoje) avisos.append(html(`<a class="alerta atencao" href="#/m/injetaveis">${icone('vaccine')}<span>${deHoje} aplicação(ões) agendada(s) para hoje.</span>${icone('chevron-right')}</a>`));
     cards.push(cartaoNumero({
       rotulo: 'Aplicações agendadas', valor: agendadas.length,
       selo: [deHoje && `${deHoje} hoje`, atrasadas && `${atrasadas} atrasada(s)`].filter(Boolean).join(' · ') || 'Nada para hoje',
@@ -101,15 +161,14 @@ export async function paginaInicio(main) {
   if (notasRec) {
     const s = schemaPorId('notas');
     const lembretes = notasRec.filter((n) => s.alerta(n));
-    for (const n of lembretes) {
-      avisos.append(html(`<a class="alerta atencao" href="#/m/notas/${n.id}">${icone('bell')}<span>${esc(n.titulo)}: ${esc(s.alerta(n).msg.toLowerCase())}</span>${icone('chevron-right')}</a>`));
-    }
     cards.push(cartaoNumero({
       rotulo: 'Lembretes', valor: lembretes.length,
       selo: lembretes.length ? 'Para hoje ou atrasados' : 'Nada pendente', nivel: lembretes.length ? 'atencao' : 'ok', href: '#/m/notas',
     }));
   }
   metricas.innerHTML = cards.join('');
+
+  await montarAgenda(pagina.querySelector('[data-agenda]'), { agendadas, notasRec, atendAbertos });
 
   const recentes = [
     ...(afericoesHoje || []).map((d) => ({ s: schemaPorId('afericoes'), d })),

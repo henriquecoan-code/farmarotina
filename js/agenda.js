@@ -11,15 +11,17 @@ const meioDia = (iso) => new Date(`${String(iso).slice(0, 10)}T12:00`);
 // Dias entre hoje e a data (negativo = já passou)
 export const diasAte = (iso) => Math.round((meioDia(iso) - meioDia(hoje())) / DIA);
 
-export function situacao(d) {
-  const n = diasAte(d.proxima);
+export function situacaoData(iso) {
+  const n = diasAte(iso);
   return n < 0 ? 'atrasado' : n === 0 ? 'hoje' : 'futuro';
 }
+export const situacao = (d) => situacaoData(d.proxima);
 
-export function textoQuando(iso) {
+// genero: 'a' (aplicação) ou 'o' (lembrete, retorno)
+export function textoQuando(iso, genero = 'a') {
   const n = diasAte(iso);
-  if (n < -1) return `atrasada há ${-n} dias`;
-  if (n === -1) return 'atrasada desde ontem';
+  if (n < -1) return `atrasad${genero} há ${-n} dias`;
+  if (n === -1) return `atrasad${genero} desde ontem`;
   if (n === 0) return 'hoje';
   if (n === 1) return 'amanhã';
   return `em ${n} dias`;
@@ -64,8 +66,15 @@ export async function telefones() {
   return new Map(clientes.map((c) => [c.id, c.telefone]));
 }
 
-export function botaoWhatsapp(d, telefone, comTexto = false) {
-  const link = linkWhatsapp(telefone, mensagemWhatsapp(d));
+// Mensagem para retornar o contato de um atendimento em aberto
+export function mensagemRetorno(d) {
+  const nome = String(d.clienteNome || '').trim().split(/\s+/)[0] || '';
+  const farmacia = config.NOME_FARMACIA ? `da ${config.NOME_FARMACIA}` : 'da farmácia';
+  return `Olá${nome ? ', ' + nome : ''}! Aqui é ${farmacia}. Estamos retornando o seu contato. Podemos conversar?`;
+}
+
+export function botaoWhatsapp(d, telefone, comTexto = false, texto = mensagemWhatsapp(d)) {
+  const link = linkWhatsapp(telefone, texto);
   const rotulo = comTexto ? ' Avisar pelo WhatsApp' : '<span class="so-celular">Avisar</span>';
   if (!link) {
     return `<button type="button" class="btn ${comTexto ? '' : 'icone'} whats" disabled title="Cliente sem telefone cadastrado">${icone('brand-whatsapp')}${rotulo}</button>`;
@@ -83,18 +92,25 @@ export function linkRegistrar(schemaId, d) {
   return `#/m/${schemaId}/novo?${p}`;
 }
 
-export function cartaoAgenda(schemaId, d, telefone) {
-  const dose = d.totalDoses && d.dose ? `dose ${d.dose + 1} de ${d.totalDoses}` : d.dose ? `dose ${d.dose + 1}` : '';
-  return `<div class="agenda ${situacao(d)}">
-    <a class="agenda-texto" href="#/m/${schemaId}/${d.id}">
-      <div class="linha-titulo">${esc(d.clienteNome || 'Sem cliente')}</div>
-      <div class="linha-sub">${esc([d.medicamento, dose].filter(Boolean).join(' · '))}</div>
+// Cartão genérico de algo com prazo: amarelo no dia, vermelho se passou.
+export function cartaoPrazo({ data, titulo, sub, href, etiqueta, genero, acoes = '', atributos = '' }) {
+  return `<div class="agenda ${situacaoData(data)}" ${atributos}>
+    <a class="agenda-texto" href="${href}">
+      <div class="linha-titulo">${etiqueta ? `<span class="etiqueta">${esc(etiqueta)}</span> ` : ''}${esc(titulo)}</div>
+      <div class="linha-sub">${esc(sub || '')}</div>
     </a>
-    <div class="agenda-data"><b>${ddmm(d.proxima)}</b><span>${esc(textoQuando(d.proxima))}</span></div>
-    <div class="agenda-acoes">
-      ${botaoWhatsapp(d, telefone)}
-      <a class="btn icone" href="${linkRegistrar(schemaId, d)}" title="Registrar esta aplicação" aria-label="Registrar esta aplicação">${icone('check')}<span class="so-celular">Registrar</span></a>
-    </div></div>`;
+    <div class="agenda-data"><b>${ddmm(data)}</b><span>${esc(textoQuando(data, genero))}</span></div>
+    <div class="agenda-acoes">${acoes}</div></div>`;
+}
+
+export function cartaoAgenda(schemaId, d, telefone, etiqueta = '') {
+  const dose = d.totalDoses && d.dose ? `dose ${d.dose + 1} de ${d.totalDoses}` : d.dose ? `dose ${d.dose + 1}` : '';
+  return cartaoPrazo({
+    data: d.proxima, etiqueta, titulo: d.clienteNome || 'Sem cliente',
+    sub: [d.medicamento, dose].filter(Boolean).join(' · '), href: `#/m/${schemaId}/${d.id}`,
+    acoes: `${botaoWhatsapp(d, telefone)}
+      <a class="btn icone" href="${linkRegistrar(schemaId, d)}" title="Registrar esta aplicação" aria-label="Registrar esta aplicação">${icone('check')}<span class="so-celular">Registrar</span></a>`,
+  });
 }
 
 // ---------- dados ----------
