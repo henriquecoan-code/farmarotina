@@ -2,14 +2,14 @@
 // mas guarda tudo no localStorage deste navegador. Serve para testar o app sem Firebase.
 import { agoraLocal, diasAtras, hoje } from './util.js';
 
-const CHAVE = 'farmarotina-demo-v1';
+const CHAVE = 'farmarotina-demo-v2';
 const SESSAO = 'farmarotina-demo-sessao';
 const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'pops'];
 
 export const USUARIOS_DEMO = {
   'admin@demo': { nome: 'Ana (admin)', papel: 'admin', modulos: [], ativo: true },
   'farmaceutico@demo': { nome: 'Bruno (farmacêutico)', papel: 'usuario', modulos: TODOS, ativo: true },
-  'atendente@demo': { nome: 'Carla (atendente)', papel: 'usuario', modulos: ['clientes', 'temperatura', 'atendimento', 'fornecedores', 'pops'], ativo: true },
+  'atendente@demo': { nome: 'Carla (atendente)', papel: 'usuario', modulos: ['clientes', 'temperatura', 'atendimento', 'notas', 'fornecedores', 'pops'], ativo: true },
 };
 
 const novoId = () => Math.random().toString(36).slice(2, 12);
@@ -51,9 +51,10 @@ function semente() {
     if (d > 0) add('temperatura', { dataHora: h(d, '16:00'), turno: 'Tarde', local: 'Geladeira', atual: d === 3 ? 8.9 : 5.1, min: 3.4, max: d === 3 ? 9.4 : 6.5, acao: d === 3 ? 'Porta mal fechada. Ajustada e reconferida após 30 min (5,8 °C).' : '' });
   }
 
-  const fornecedor = add('fornecedores', { nome: 'Distribuidora Saúde Ltda.', cnpj: '12.345.678/0001-90', contato: 'Roberto', telefone: '(11) 3333-4444', email: 'vendas@exemplo.com.br', produtos: 'Medicamentos, perfumaria' });
-  add('notas', { numero: '48213', dataHora: h(0, '09:00'), fornecedorId: fornecedor, fornecedorNome: 'Distribuidora Saúde Ltda.', emissao: diasAtras(1), valor: 3870.45, situacao: 'Com divergência', obs: 'Faltaram 2 cx de dipirona.' });
-  add('notas', { numero: '48102', dataHora: h(5, '14:10'), fornecedorId: fornecedor, fornecedorNome: 'Distribuidora Saúde Ltda.', emissao: diasAtras(6), valor: 1520, situacao: 'Conferida' });
+  add('fornecedores', { nome: 'Distribuidora Saúde Ltda.', cnpj: '12.345.678/0001-90', contato: 'Roberto', telefone: '(11) 3333-4444', email: 'vendas@exemplo.com.br', horarioLimite: '14:00', prazo: '24 h', produtos: 'Medicamentos, perfumaria' });
+  add('fornecedores', { nome: 'Genéricos Brasil Distribuidora', contato: 'Patrícia', telefone: '(11) 4002-1000', horarioLimite: '17:30', prazo: '2 dias úteis', produtos: 'Genéricos e similares', obs: 'Pedido mínimo de R$ 500.' });
+  add('notas', { titulo: 'Dipirona em falta na NF 48213', dataHora: h(0, '09:00'), categoria: 'Estoque', texto: 'Faltaram 2 caixas de dipirona 500 mg. O Roberto (Distribuidora Saúde) vai repor na terça.', lembrete: hoje() });
+  add('notas', { titulo: 'Reunião de equipe', dataHora: h(3, '18:10'), categoria: 'Equipe', texto: 'Revisar escala de dezembro e o POP de temperatura com todos.' });
 
   add('atendimentos', { dataHora: h(0, '11:00'), status: 'Aberto', clienteId: maria, clienteNome: 'Maria Souza', tipo: 'Encomenda', descricao: 'Losartana 50 mg genérico, 3 caixas.', retorno: hoje() });
   add('atendimentos', { dataHora: h(2, '17:45'), status: 'Resolvido', tipo: 'Dúvida', clienteNome: 'Cliente de passagem', descricao: 'Interação entre ibuprofeno e losartana.', solucao: 'Orientado a preferir paracetamol e falar com o médico.' });

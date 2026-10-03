@@ -123,8 +123,7 @@ service cloud.firestore {
     }
 
     match /fornecedores/{id} {
-      // Quem lança notas precisa buscar o fornecedor.
-      allow read: if pode('fornecedores') || pode('notas');
+      allow read: if pode('fornecedores');
       allow create: if pode('fornecedores') && criacaoValida();
       allow update: if pode('fornecedores') && (edicaoValida() || soContador());
       allow delete: if admin();

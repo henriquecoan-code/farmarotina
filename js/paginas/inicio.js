@@ -45,7 +45,7 @@ export async function paginaInicio(main) {
     podeVer('temperatura') ? seguro(db.listar('temperatura', { limite: 30 })) : null,
     podeVer('saude') ? seguro(db.listar('afericoes', { de: dia, ate: dia })) : null,
     podeVer('atendimento') ? seguro(db.listar('atendimentos', { onde: ['status', 'Aberto'] })) : null,
-    podeVer('notas') ? seguro(db.listar('notas', { limite: 50 })) : null,
+    podeVer('notas') ? seguro(db.listar('notas', { limite: 200 })) : null,
     podeVer('saude') ? seguro(db.listar('injetaveis', { limite: 10 })) : null,
   ]);
 
@@ -86,11 +86,14 @@ export async function paginaInicio(main) {
     }));
   }
   if (notasRec) {
-    const pend = notasRec.filter((n) => n.situacao !== 'Conferida');
-    const div = pend.filter((n) => n.situacao === 'Com divergência').length;
+    const s = schemaPorId('notas');
+    const lembretes = notasRec.filter((n) => s.alerta(n));
+    for (const n of lembretes) {
+      avisos.append(html(`<a class="alerta atencao" href="#/m/notas/${n.id}">${icone('bell')}<span>${esc(n.titulo)}: ${esc(s.alerta(n).msg.toLowerCase())}</span>${icone('chevron-right')}</a>`));
+    }
     cards.push(cartaoNumero({
-      rotulo: 'Notas a resolver', valor: pend.length,
-      selo: div ? `${div} com divergência` : '', nivel: div ? 'atencao' : 'ok', href: '#/m/notas',
+      rotulo: 'Lembretes', valor: lembretes.length,
+      selo: lembretes.length ? 'Para hoje ou atrasados' : 'Nada pendente', nivel: lembretes.length ? 'atencao' : 'ok', href: '#/m/notas',
     }));
   }
   metricas.innerHTML = cards.join('');

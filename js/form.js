@@ -140,8 +140,10 @@ function controle(campo, valor, dados) {
       };
     }
     case 'data':
-    case 'datahora': {
-      const el = html(`<input type="${campo.tipo === 'data' ? 'date' : 'datetime-local'}" name="${k}">`);
+    case 'datahora':
+    case 'hora': {
+      const tipo = { data: 'date', datahora: 'datetime-local', hora: 'time' }[campo.tipo];
+      const el = html(`<input type="${tipo}" name="${k}">`);
       el.value = valor ?? '';
       return { el, get: () => el.value || null };
     }

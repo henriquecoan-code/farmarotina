@@ -1,4 +1,4 @@
-import { fmtData, fmtDataHora, fmtMoeda, hoje } from '../util.js';
+import { fmtData, fmtDataHora, hoje } from '../util.js';
 
 export const clientes = {
   id: 'clientes', modulo: 'clientes', nome: 'Clientes', novo: 'Novo cliente', icone: 'users',
@@ -37,22 +37,35 @@ export const atendimentos = {
 };
 
 export const notas = {
-  id: 'notas', modulo: 'notas', nome: 'Notas fiscais', novo: 'Nova nota', icone: 'file-invoice',
+  id: 'notas', modulo: 'notas', nome: 'Anotações', novo: 'Nova anotação', icone: 'notes',
   ordem: 'dataHora', desc: true,
   campos: [
-    { k: 'numero', rot: 'Número da nota', tipo: 'texto', obrig: true, lg: 'm' },
-    { k: 'dataHora', rot: 'Recebida em', tipo: 'datahora', obrig: true, lg: 'm' },
-    { k: 'fornecedorId', rot: 'Fornecedor', tipo: 'ref', col: 'fornecedores', livre: true },
-    { k: 'emissao', rot: 'Emissão', tipo: 'data', lg: 'm' },
-    { k: 'valor', rot: 'Valor total', tipo: 'moeda', lg: 'm' },
-    { k: 'situacao', rot: 'Situação', tipo: 'opcoes', opcoes: ['Pendente', 'Conferida', 'Com divergência'], obrig: true, padrao: 'Pendente' },
-    { k: 'obs', rot: 'Observações', tipo: 'textarea' },
+    { k: 'titulo', rot: 'Título', tipo: 'texto', obrig: true },
+    { k: 'dataHora', rot: 'Data e hora', tipo: 'datahora', obrig: true, lg: 'm' },
+    { k: 'categoria', rot: 'Categoria', tipo: 'opcoes', opcoes: ['Geral', 'Estoque', 'Equipe', 'Clientes', 'Fornecedores', 'Financeiro', 'Outro'], padrao: 'Geral', lg: 'm' },
+    { k: 'texto', rot: 'Anotação', tipo: 'textarea', linhas: 6, obrig: true },
+    { k: 'lembrete', rot: 'Lembrar em', tipo: 'data', lg: 'm', ajuda: 'Opcional' },
+    { k: 'resolvido', rot: 'Resolvido', tipo: 'simnao', lg: 'm', se: (v) => !!v.lembrete },
   ],
-  titulo: (d) => `NF ${d.numero} · ${d.fornecedorNome || 'Sem fornecedor'}`,
-  sub: (d) => `${fmtDataHora(d.dataHora)} · ${d.situacao}`,
-  valor: (d) => fmtMoeda(d.valor),
-  alerta: (v) => (v.situacao === 'Com divergência' ? { nivel: 'atencao', msg: 'Nota com divergência.' } : null),
+  titulo: (d) => d.titulo,
+  sub: (d) => `${d.categoria || 'Geral'} · ${fmtDataHora(d.dataHora)} · ${String(d.texto || '').slice(0, 60)}`,
+  valor: (d) => (d.lembrete && !d.resolvido ? `lembrar ${fmtData(d.lembrete)}` : ''),
+  alerta: (v) => {
+    if (!v.lembrete || v.resolvido) return null;
+    if (v.lembrete < hoje()) return { nivel: 'atencao', msg: `Lembrete atrasado (era ${fmtData(v.lembrete)}).` };
+    if (v.lembrete === hoje()) return { nivel: 'atencao', msg: 'Lembrete para hoje.' };
+    return null;
+  },
 };
+
+// "14:00" → minutos desde 00:00, para comparar com a hora atual
+const minutos = (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); return h * 60 + m; };
+function situacaoPedido(d) {
+  if (!d.horarioLimite) return '';
+  const agora = new Date();
+  const passou = agora.getHours() * 60 + agora.getMinutes() > minutos(d.horarioLimite);
+  return passou ? `Encerrado (${d.horarioLimite})` : `Pedido até ${d.horarioLimite}`;
+}
 
 export const fornecedores = {
   id: 'fornecedores', modulo: 'fornecedores', nome: 'Fornecedores', novo: 'Novo fornecedor', icone: 'truck',
@@ -63,12 +76,14 @@ export const fornecedores = {
     { k: 'contato', rot: 'Contato (vendedor)', tipo: 'texto', lg: 'm' },
     { k: 'telefone', rot: 'Telefone', tipo: 'tel', lg: 'm' },
     { k: 'email', rot: 'E-mail', tipo: 'email', lg: 'm' },
+    { k: 'horarioLimite', rot: 'Horário limite de envio do pedido', tipo: 'hora', lg: 'm' },
+    { k: 'prazo', rot: 'Prazo padrão de entrega', tipo: 'texto', lg: 'm', ajuda: 'Ex.: 24 h, 2 dias úteis' },
     { k: 'produtos', rot: 'Produtos que fornece', tipo: 'textarea' },
-    { k: 'obs', rot: 'Observações (prazos, pedido mínimo…)', tipo: 'textarea' },
+    { k: 'obs', rot: 'Observações (pedido mínimo, condições…)', tipo: 'textarea' },
   ],
   titulo: (d) => d.nome,
-  sub: (d) => [d.contato, d.telefone].filter(Boolean).join(' · '),
-  valor: (d) => d.cnpj || '',
+  sub: (d) => [d.contato, d.telefone, d.prazo && `entrega: ${d.prazo}`].filter(Boolean).join(' · '),
+  valor: situacaoPedido,
 };
 
 export const pops = {

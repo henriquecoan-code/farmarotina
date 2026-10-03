@@ -5,7 +5,9 @@ App web (PWA) para registrar as rotinas e os POPs da farmácia. Funciona no comp
 - **Saúde:** aferições de pressão, glicemia e oximetria, com alerta para valores alterados, e aplicação de injetáveis (lote, validade, via, receita).
 - **Temperatura:** geladeira e ambiente, por turno, com alerta fora da faixa e aviso quando o turno ainda não foi registrado.
 - **Clientes:** cadastro com consentimento LGPD e histórico completo.
-- **Atendimento, notas fiscais, fornecedores e POPs.**
+- **Anotações gerais** com categoria e lembrete (aparece na tela inicial no dia).
+- **Fornecedores** com horário limite para envio do pedido e prazo padrão de entrega.
+- **Atendimento e POPs.**
 - **Anexos com anotações** em qualquer registro (foto pela câmera ou arquivo).
 - **Exportação CSV** (abre no Excel) e **impressão** por período, por exemplo a planilha mensal de temperatura.
 - **Usuários com permissão por módulo:** o admin aprova cada pessoa e escolhe o que ela acessa.
@@ -73,7 +75,7 @@ git push -u origin main
 |---|---|
 | Clientes | quem tem *clientes*; *saúde* e *atendimento* podem buscar clientes |
 | Saúde (aferições + injetáveis) | quem tem *saúde* |
-| Temperatura, Atendimento, Notas, Fornecedores | quem tem o módulo (*notas* também busca fornecedores) |
+| Temperatura, Atendimento, Anotações, Fornecedores | quem tem o módulo |
 | POPs | todos com o módulo leem; só o admin cria e edita |
 | Excluir qualquer registro ou anexo | só o admin |
 | Usuários | só o admin |
