@@ -1,0 +1,151 @@
+rules_version = '2';
+
+// Regras de segurança do FarmaRotina.
+// Cole este arquivo em: Console do Firebase → Firestore Database → Regras → Publicar.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ---------- funções auxiliares ----------
+    function logado() { return request.auth != null; }
+    function caminhoPerfil() { return /databases/$(database)/documents/usuarios/$(request.auth.uid); }
+    function perfil() { return get(caminhoPerfil()).data; }
+    function ativo() { return logado() && exists(caminhoPerfil()) && perfil().ativo == true; }
+    function admin() { return ativo() && perfil().papel == 'admin'; }
+    function pode(modulo) { return ativo() && (perfil().papel == 'admin' || modulo in perfil().modulos); }
+
+    // Ao criar: autor é quem está logado. Ao editar: o autor original não muda.
+    function criacaoValida() { return request.resource.data.criadoPor == request.auth.uid; }
+    function edicaoValida() {
+      return request.resource.data.criadoPor == resource.data.criadoPor
+          && request.resource.data.atualizadoPor == request.auth.uid;
+    }
+    // Contador de anexos: qualquer um com acesso ao módulo pode mudar só o campo nAnexos.
+    function soContador() { return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nAnexos']); }
+
+    // ---------- usuários ----------
+    function perfilPendenteValido() {
+      return request.resource.data.keys().hasOnly(['nome', 'email', 'papel', 'modulos', 'ativo', 'criadoEm'])
+          && request.resource.data.papel == 'usuario'
+          && request.resource.data.ativo == false
+          && request.resource.data.modulos.size() == 0;
+    }
+    match /usuarios/{uid} {
+      allow read: if (logado() && request.auth.uid == uid) || admin();
+      // A própria pessoa cria (ou corrige enquanto pendente) o seu perfil, sem poder se dar permissões.
+      allow create: if logado() && request.auth.uid == uid && perfilPendenteValido();
+      allow update: if admin()
+                    || (logado() && request.auth.uid == uid && resource.data.ativo == false && perfilPendenteValido());
+      allow delete: if admin();
+    }
+
+    // ---------- módulos ----------
+    // Modelo para cada coleção:
+    //   leitura e escrita para quem tem o módulo; exclusão só para o admin.
+    //   anexos (subcoleção) seguem a mesma permissão do registro pai.
+
+    match /clientes/{id} {
+      // Quem registra aferições/injetáveis/atendimentos precisa buscar o cliente.
+      allow read: if pode('clientes') || pode('saude') || pode('atendimento');
+      allow create: if pode('clientes') && criacaoValida();
+      allow update: if pode('clientes') && (edicaoValida() || soContador());
+      allow delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('clientes');
+        allow create: if pode('clientes') && criacaoValida();
+        allow update: if pode('clientes') && edicaoValida();
+        allow delete: if admin();
+      }
+    }
+
+    match /afericoes/{id} {
+      allow read: if pode('saude');
+      allow create: if pode('saude') && criacaoValida();
+      allow update: if pode('saude') && (edicaoValida() || soContador());
+      allow delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('saude');
+        allow create: if pode('saude') && criacaoValida();
+        allow update: if pode('saude') && edicaoValida();
+        allow delete: if admin();
+      }
+    }
+
+    match /injetaveis/{id} {
+      allow read: if pode('saude');
+      allow create: if pode('saude') && criacaoValida();
+      allow update: if pode('saude') && (edicaoValida() || soContador());
+      allow delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('saude');
+        allow create: if pode('saude') && criacaoValida();
+        allow update: if pode('saude') && edicaoValida();
+        allow delete: if admin();
+      }
+    }
+
+    match /temperatura/{id} {
+      allow read: if pode('temperatura');
+      allow create: if pode('temperatura') && criacaoValida();
+      allow update: if pode('temperatura') && (edicaoValida() || soContador());
+      allow delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('temperatura');
+        allow create: if pode('temperatura') && criacaoValida();
+        allow update: if pode('temperatura') && edicaoValida();
+        allow delete: if admin();
+      }
+    }
+
+    match /atendimentos/{id} {
+      allow read: if pode('atendimento');
+      allow create: if pode('atendimento') && criacaoValida();
+      allow update: if pode('atendimento') && (edicaoValida() || soContador());
+      allow delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('atendimento');
+        allow create: if pode('atendimento') && criacaoValida();
+        allow update: if pode('atendimento') && edicaoValida();
+        allow delete: if admin();
+      }
+    }
+
+    match /notas/{id} {
+      allow read: if pode('notas');
+      allow create: if pode('notas') && criacaoValida();
+      allow update: if pode('notas') && (edicaoValida() || soContador());
+      allow delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('notas');
+        allow create: if pode('notas') && criacaoValida();
+        allow update: if pode('notas') && edicaoValida();
+        allow delete: if admin();
+      }
+    }
+
+    match /fornecedores/{id} {
+      // Quem lança notas precisa buscar o fornecedor.
+      allow read: if pode('fornecedores') || pode('notas');
+      allow create: if pode('fornecedores') && criacaoValida();
+      allow update: if pode('fornecedores') && (edicaoValida() || soContador());
+      allow delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('fornecedores');
+        allow create: if pode('fornecedores') && criacaoValida();
+        allow update: if pode('fornecedores') && edicaoValida();
+        allow delete: if admin();
+      }
+    }
+
+    match /pops/{id} {
+      // Todos com o módulo leem; só o admin escreve.
+      allow read: if pode('pops');
+      allow create, update, delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('pops');
+        allow write: if admin();
+      }
+    }
+
+    // Qualquer outra coleção fica fechada.
+  }
+}
