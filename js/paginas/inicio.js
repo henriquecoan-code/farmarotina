@@ -22,7 +22,7 @@ const resumo = (s, n = 80) => (String(s || '').length > n ? String(s).slice(0, n
 // Ações rápidas dos cartões da agenda: marcam o registro como resolvido sem abrir a tela dele
 const MARCAR = {
   nota: { col: 'notas', dados: { resolvido: true }, msg: 'Lembrete marcado como resolvido' },
-  troca: { col: 'trocas', dados: { situacao: 'Concluída' }, msg: 'Troca concluída' },
+  troca: { col: 'trocas', dados: () => schemaPorId('trocas').acaoRapida.dados(), msg: 'Troca concluída' },
 };
 const botaoMarcar = (tipo, id, rotulo, titulo) => `<button type="button" class="btn icone" data-marcar="${tipo}" data-id="${esc(id)}" title="${esc(titulo)}" aria-label="${esc(titulo)}">${icone('check')}<span class="so-celular">${esc(rotulo)}</span></button>`;
 
@@ -80,7 +80,7 @@ async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, trocasPe
     const acao = MARCAR[b.dataset.marcar];
     b.disabled = true;
     try {
-      await db.atualizar(acao.col, b.dataset.id, acao.dados);
+      await db.atualizar(acao.col, b.dataset.id, typeof acao.dados === 'function' ? acao.dados() : acao.dados);
       b.closest('.agenda').remove();
       toast(acao.msg, 'ok');
     } catch (err) {

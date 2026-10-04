@@ -471,3 +471,15 @@ input[type=checkbox], input[type=radio] { width: auto; min-height: 0; accent-col
   .novo { flex-direction: column; align-items: flex-start; gap: 6px; padding: 12px; }
 }
 .nota-admin { display: flex; align-items: center; gap: 8px; margin: 0; padding: 10px 12px; border-radius: var(--raio); background: var(--pri-claro); color: var(--pri-escuro); font-size: 14px; }
+
+/* ---------- ação rápida na linha (ex.: concluir troca) ---------- */
+.linha-com-acao { display: flex; align-items: center; border-top: 1px solid var(--borda); }
+.linha-com-acao:first-child { border-top: 0; }
+.linha-com-acao .linha { flex: 1; min-width: 0; border-top: 0; }
+.linha-com-acao .acao-rapida { margin-right: 14px; flex-shrink: 0; color: var(--ok); border-color: var(--ok); }
+.linha-com-acao .acao-rapida:hover { background: var(--ok-bg); }
+.pagina-topo .acao-rapida { color: var(--ok); border-color: var(--ok); }
+@media (max-width: 520px) {
+  .linha-com-acao { flex-wrap: wrap; }
+  .linha-com-acao .acao-rapida { margin: 0 14px 10px auto; }
+}

@@ -2,23 +2,50 @@ import { db } from '../db.js';
 import { podeEditar } from '../perm.js';
 import { exportarCSV, imprimir } from '../export.js';
 import { listarAgendadas, telefones, cartaoAgenda } from '../agenda.js';
-import { $, esc, html, icone, normalizar, fmtData, mensagemErro } from '../util.js';
+import { $, esc, html, icone, normalizar, fmtData, mensagemErro, toast } from '../util.js';
+import { schemaPorId } from '../modulos/index.js';
 
 const filtrosSalvos = {}; // lembra o filtro de cada módulo enquanto o app está aberto
 
 // Etiqueta colorida opcional na linha (ex.: tipo da troca), para reconhecer de relance
 const etiquetaCor = (e) => (e ? `<span class="etiqueta cor-${e.cor}">${esc(e.texto)}</span> ` : '');
 
+// Ação rápida na linha (ex.: "Concluir" troca), sem abrir o registro
+export function botaoAcaoRapida(schema, d, comTexto = false) {
+  const acao = schema.acaoRapida;
+  if (!acao || !acao.quando(d) || !podeEditar(schema)) return '';
+  return `<button type="button" class="btn ${comTexto ? '' : 'pequeno'} acao-rapida" data-acao-rapida data-schema="${schema.id}" data-id="${esc(d.id)}" title="${esc(acao.rot)}">${icone(acao.icone)} ${esc(acao.rot)}</button>`;
+}
+
+// Clique em qualquer botão de ação rápida (lista, histórico, página do registro): grava e recarrega a tela
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-acao-rapida]');
+  if (!b) return;
+  e.preventDefault();
+  const schema = schemaPorId(b.dataset.schema);
+  b.disabled = true;
+  try {
+    await db.atualizar(schema.id, b.dataset.id, schema.acaoRapida.dados());
+    toast(schema.acaoRapida.msg, 'ok');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  } catch (err) {
+    b.disabled = false;
+    toast(mensagemErro(err), 'erro');
+  }
+});
+
 export function linhaRegistro(schema, d) {
   const a = schema.alerta?.(d);
   const valor = schema.valor?.(d) || '';
-  return `<a class="linha ${a ? 'com-alerta ' + a.nivel : ''}" href="#/m/${schema.id}/${d.id}">
+  const acao = botaoAcaoRapida(schema, d);
+  const linha = `<a class="linha ${a ? 'com-alerta ' + a.nivel : ''}" href="#/m/${schema.id}/${d.id}">
     <div class="linha-texto"><div class="linha-titulo">${etiquetaCor(schema.etiqueta?.(d))}${esc(schema.titulo(d))}</div>
     <div class="linha-sub">${esc(schema.sub?.(d) || '')}</div></div>
     <div class="linha-valor">${valor ? `<span>${esc(valor)}</span>` : ''}
     ${a ? `<span class="selo ${a.nivel}">${icone(a.nivel === 'perigo' ? 'alert-triangle' : 'alert-circle')}</span>` : ''}
     ${d.nAnexos > 0 ? `<span class="mudo" title="${d.nAnexos} anexo(s)">${icone('paperclip')}${d.nAnexos}</span>` : ''}
     </div></a>`;
+  return acao ? `<div class="linha-com-acao">${linha}${acao}</div>` : linha;
 }
 
 export async function paginaLista(main, schema) {

@@ -3,7 +3,7 @@ import { podeEditar, podeExcluir, podeVer } from '../perm.js';
 import { schemaPorId } from '../modulos/index.js';
 import { fmtValor, campoVisivel, htmlAlerta, limparCacheRef } from '../form.js';
 import { renderAnexos } from '../anexos.js';
-import { linhaRegistro } from './lista.js';
+import { linhaRegistro, botaoAcaoRapida } from './lista.js';
 import { telefones, textoQuando, situacao, botaoWhatsapp, linkRegistrar, encerrarAgenda } from '../agenda.js';
 import { $, esc, html, icone, fmtData, fmtDataHora, toast, mensagemErro } from '../util.js';
 
@@ -26,6 +26,7 @@ export async function paginaDetalhe(main, schema, id) {
     <div class="pagina-topo">
       <div><h1>${esc(schema.titulo(d))}</h1><div class="mudo">${esc(schema.sub?.(d) || '')}</div></div>
       <div class="botoes">
+        ${botaoAcaoRapida(schema, d, true)}
         ${podeEditar(schema) ? `<a class="btn" href="#/m/${schema.id}/${id}/editar">${icone('pencil')} Editar</a>` : ''}
         ${podeExcluir() ? `<button type="button" class="btn perigo" data-excluir>${icone('trash')} Excluir</button>` : ''}
       </div>

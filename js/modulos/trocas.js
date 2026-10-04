@@ -1,6 +1,6 @@
 // Trocas com outras farmácias: empréstimos (pega hoje, devolve depois) e repasses de produtos perto do vencimento.
 import * as config from '../config.js';
-import { fmtData, fmtDataHora, fmtNum, hoje } from '../util.js';
+import { agoraLocal, fmtData, fmtDataHora, fmtNum, hoje } from '../util.js';
 
 export const TIPOS_TROCA = ['Peguei emprestado', 'Emprestei', 'Repassei (vencimento próximo)', 'Recebi (vencimento próximo)'];
 // Cor e ícone de cada tipo, usados nos botões de "nova troca" e nas etiquetas da lista
@@ -64,6 +64,7 @@ export const trocas = {
   campos: [
     { k: 'dataHora', rot: 'Data e hora', tipo: 'datahora', lg: 'm' },
     { k: 'situacao', rot: 'Situação', tipo: 'opcoes', opcoes: ['Pendente', 'Concluída'], padrao: 'Pendente', lg: 'm' },
+    { k: 'concluidaEm', rot: 'Concluída em', tipo: 'datahora', lg: 'm', se: (v) => v.situacao === 'Concluída' },
     { k: 'tipo', rot: 'Tipo', tipo: 'opcoes', opcoes: TIPOS_TROCA, lista: true },
     { k: 'parceiroId', rot: 'Farmácia parceira', tipo: 'ref', col: 'parceiros', obrig: true, livre: true,
       preencher: { contato: 'contato', telefone: 'telefone' } },
@@ -79,7 +80,16 @@ export const trocas = {
     { k: 'obs', rot: 'Observações', tipo: 'textarea' },
   ],
   // Empréstimo já sugere devolução no dia seguinte (pode ajustar ou apagar)
-  calcular: (v) => ({ prazo: emprestimo(v) ? diaSeguinte(v.dataHora) : null }),
+  calcular: (v) => ({
+    prazo: emprestimo(v) ? diaSeguinte(v.dataHora) : null,
+    concluidaEm: v.situacao === 'Concluída' ? v.concluidaEm || agoraLocal() : null,
+  }),
+  // Botão "Concluir" nas trocas pendentes (lista e página da troca)
+  acaoRapida: {
+    rot: 'Concluir', icone: 'check', msg: 'Troca concluída',
+    quando: (d) => d.situacao !== 'Concluída',
+    dados: () => ({ situacao: 'Concluída', concluidaEm: agoraLocal() }),
+  },
   titulo: (d) => `${qtd(d)}${d.produto}`,
   sub: (d) => [nomeParceiro(d), fmtDataHora(d.dataHora)].filter(Boolean).join(' · '),
   etiqueta: (d) => (ESTILO_TIPO[d.tipo] ? { texto: ESTILO_TIPO[d.tipo].curto, cor: ESTILO_TIPO[d.tipo].cor } : null),
