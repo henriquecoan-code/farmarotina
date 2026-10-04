@@ -1,3 +1,5 @@
+import { ehAdmin } from './perm.js';
+
 export const $ = (sel, el = document) => el.querySelector(sel);
 export const $$ = (sel, el = document) => [...el.querySelectorAll(sel)];
 
@@ -59,7 +61,11 @@ export function toast(msg, tipo = '') {
 
 export function mensagemErro(e) {
   const code = e?.code || '';
-  if (code.includes('permission-denied')) return 'Você não tem permissão para isso.';
+  if (code.includes('permission-denied')) {
+    return ehAdmin()
+      ? 'O Firebase recusou a gravação. Confira se as regras mais recentes (firestore.rules) foram publicadas no console do Firebase.'
+      : 'Você não tem permissão para isso. Peça ao administrador para liberar este módulo.';
+  }
   if (code.includes('invalid-credential') || code.includes('wrong-password') || code.includes('user-not-found'))
     return 'E-mail ou senha incorretos.';
   if (code.includes('email-already-in-use')) return 'Esse e-mail já tem cadastro. Use "Entrar".';

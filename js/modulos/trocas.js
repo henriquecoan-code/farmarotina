@@ -3,6 +3,13 @@ import * as config from '../config.js';
 import { fmtData, fmtDataHora, fmtNum, hoje } from '../util.js';
 
 export const TIPOS_TROCA = ['Peguei emprestado', 'Emprestei', 'Repassei (vencimento próximo)', 'Recebi (vencimento próximo)'];
+// Cor e ícone de cada tipo, usados nos botões de "nova troca" e nas etiquetas da lista
+export const ESTILO_TIPO = {
+  'Peguei emprestado': { cor: 'azul', icone: 'arrow-down-left', curto: 'Peguei' },
+  'Emprestei': { cor: 'ambar', icone: 'arrow-up-right', curto: 'Emprestei' },
+  'Repassei (vencimento próximo)': { cor: 'roxo', icone: 'package-export', curto: 'Repassei' },
+  'Recebi (vencimento próximo)': { cor: 'verde', icone: 'package-import', curto: 'Recebi' },
+};
 const emprestimo = (v) => v.tipo === 'Peguei emprestado' || v.tipo === 'Emprestei';
 const pad = (n) => String(n).padStart(2, '0');
 
@@ -41,8 +48,10 @@ export function mensagemTroca(d) {
         + `${d.prazo ? ` (combinado para ${fmtData(d.prazo).slice(0, 5)})` : ''}. Obrigado!`;
     case 'Repassei (vencimento próximo)':
       return `${ola} Sobre ${item} que repassamos para vocês em ${quando}: podemos combinar o acerto?`;
-    default:
+    case 'Recebi (vencimento próximo)':
       return `${ola} Sobre ${item} que recebemos de vocês em ${quando}: vamos combinar o acerto?`;
+    default:
+      return `${ola} Sobre ${item} (${quando}): podemos conversar?`;
   }
 }
 
@@ -50,10 +59,12 @@ export const trocas = {
   id: 'trocas', modulo: 'trocas', nome: 'Trocas', novo: 'Nova troca', icone: 'arrows-exchange',
   ordem: 'dataHora', desc: true,
   links: [{ href: '#/m/parceiros', icone: 'building-store', rot: 'Farmácias parceiras' }],
+  // Um botão por tipo: a troca já abre com o tipo escolhido
+  novos: TIPOS_TROCA.map((t) => ({ rot: t.replace('(vencimento próximo)', '(vencendo)'), query: { tipo: t }, ...ESTILO_TIPO[t] })),
   campos: [
-    { k: 'dataHora', rot: 'Data e hora', tipo: 'datahora', obrig: true, lg: 'm' },
-    { k: 'situacao', rot: 'Situação', tipo: 'opcoes', opcoes: ['Pendente', 'Concluída'], obrig: true, padrao: 'Pendente', lg: 'm' },
-    { k: 'tipo', rot: 'Tipo', tipo: 'opcoes', opcoes: TIPOS_TROCA, lista: true, obrig: true },
+    { k: 'dataHora', rot: 'Data e hora', tipo: 'datahora', lg: 'm' },
+    { k: 'situacao', rot: 'Situação', tipo: 'opcoes', opcoes: ['Pendente', 'Concluída'], padrao: 'Pendente', lg: 'm' },
+    { k: 'tipo', rot: 'Tipo', tipo: 'opcoes', opcoes: TIPOS_TROCA, lista: true },
     { k: 'parceiroId', rot: 'Farmácia parceira', tipo: 'ref', col: 'parceiros', obrig: true, livre: true,
       preencher: { contato: 'contato', telefone: 'telefone' } },
     { k: 'contato', rot: 'Contato', tipo: 'texto', lg: 'm', ajuda: 'Quem combinou' },
@@ -70,7 +81,8 @@ export const trocas = {
   // Empréstimo já sugere devolução no dia seguinte (pode ajustar ou apagar)
   calcular: (v) => ({ prazo: emprestimo(v) ? diaSeguinte(v.dataHora) : null }),
   titulo: (d) => `${qtd(d)}${d.produto}`,
-  sub: (d) => `${d.tipo} · ${nomeParceiro(d)} · ${fmtDataHora(d.dataHora)}`,
+  sub: (d) => [nomeParceiro(d), fmtDataHora(d.dataHora)].filter(Boolean).join(' · '),
+  etiqueta: (d) => (ESTILO_TIPO[d.tipo] ? { texto: ESTILO_TIPO[d.tipo].curto, cor: ESTILO_TIPO[d.tipo].cor } : null),
   valor: (d) => (d.situacao === 'Concluída' ? 'Concluída' : d.prazo ? `prazo ${fmtData(d.prazo).slice(0, 5)}` : 'Pendente'),
   alerta,
 };

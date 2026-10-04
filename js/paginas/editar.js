@@ -2,7 +2,7 @@ import { db } from '../db.js';
 import { podeEditar } from '../perm.js';
 import { renderForm, limparCacheRef } from '../form.js';
 import { prepararAgenda, concluirAnteriores } from '../agenda.js';
-import { esc, html, icone, toast } from '../util.js';
+import { esc, html, icone, toast, agoraLocal } from '../util.js';
 
 export async function paginaEditar(main, schema, id, query) {
   if (!podeEditar(schema)) {
@@ -25,13 +25,15 @@ export async function paginaEditar(main, schema, id, query) {
   main.innerHTML = '';
   const pagina = html(`<div class="pagina estreita">
     <a class="voltar" href="${voltar}">${icone('arrow-left')} ${id ? 'Voltar' : esc(schema.nome)}</a>
-    <div class="pagina-topo"><h1>${id ? 'Editar' : esc(schema.novo)}</h1></div>
+    <div class="pagina-topo"><h1>${id ? 'Editar' : esc(schema.novo)}</h1>${!id && query.get('tipo') ? `<span class="selo-texto info">${esc(query.get('tipo'))}</span>` : ''}</div>
     <section class="cartao" data-form></section></div>`);
   main.append(pagina);
 
   pagina.querySelector('[data-form]').append(renderForm(schema, dados, {
     onCancelar: () => { location.hash = voltar; },
     onSalvar: async (vals) => {
+      // Sem data a lista (ordenada por data) não mostraria o registro: usa o momento atual
+      if (schema.ordem === 'dataHora' && !vals.dataHora) vals.dataHora = agoraLocal();
       if (schema.agenda) vals = prepararAgenda(vals, id ? dados : null);
       let novoId = id;
       let status;

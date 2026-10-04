@@ -76,6 +76,7 @@ function cartaoUsuario(u, souEu) {
     </div>
     <div class="usuario-modulos">
       <div class="rotulo">Módulos <span class="perfis">${Object.keys(PERFIS).map((p) => `<button type="button" class="btn pequeno" data-perfil="${esc(p)}">Perfil ${esc(p.toLowerCase())}</button>`).join('')}</span></div>
+      <p class="nota-admin" data-nota-admin>${icone('shield-check')} Administrador tem acesso a todos os módulos, inclusive os que forem criados depois. Não é preciso marcar nada.</p>
       <div class="chips">${MODULOS.map((m) => `<label class="chip"><input type="checkbox" value="${m.id}" ${mods.has(m.id) ? 'checked' : ''}><span>${esc(m.nome)}</span></label>`).join('')}</div>
     </div>
     <div class="acoes"><button type="button" class="btn pri" data-salvar>${icone('check')} Salvar</button></div>
@@ -92,8 +93,12 @@ function cartaoUsuario(u, souEu) {
   };
 
   const chips = $$('.chips input', card);
+  // Admin já tem tudo: em vez dos módulos, mostra o aviso
   const sincronizarAdmin = () => {
-    $('.usuario-modulos', card).classList.toggle('desativado', $('[data-admin]', card).checked);
+    const admin = $('[data-admin]', card).checked;
+    $('.usuario-modulos .chips', card).hidden = admin;
+    $('.usuario-modulos .perfis', card).hidden = admin;
+    $('[data-nota-admin]', card).hidden = !admin;
   };
   $('[data-admin]', card).onchange = sincronizarAdmin;
   sincronizarAdmin();

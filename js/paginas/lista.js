@@ -6,11 +6,14 @@ import { $, esc, html, icone, normalizar, fmtData, mensagemErro } from '../util.
 
 const filtrosSalvos = {}; // lembra o filtro de cada módulo enquanto o app está aberto
 
+// Etiqueta colorida opcional na linha (ex.: tipo da troca), para reconhecer de relance
+const etiquetaCor = (e) => (e ? `<span class="etiqueta cor-${e.cor}">${esc(e.texto)}</span> ` : '');
+
 export function linhaRegistro(schema, d) {
   const a = schema.alerta?.(d);
   const valor = schema.valor?.(d) || '';
   return `<a class="linha ${a ? 'com-alerta ' + a.nivel : ''}" href="#/m/${schema.id}/${d.id}">
-    <div class="linha-texto"><div class="linha-titulo">${esc(schema.titulo(d))}</div>
+    <div class="linha-texto"><div class="linha-titulo">${etiquetaCor(schema.etiqueta?.(d))}${esc(schema.titulo(d))}</div>
     <div class="linha-sub">${esc(schema.sub?.(d) || '')}</div></div>
     <div class="linha-valor">${valor ? `<span>${esc(valor)}</span>` : ''}
     ${a ? `<span class="selo ${a.nivel}">${icone(a.nivel === 'perigo' ? 'alert-triangle' : 'alert-circle')}</span>` : ''}
@@ -29,9 +32,10 @@ export async function paginaLista(main, schema) {
       <h1>${icone(schema.icone)} ${esc(schema.nome)}</h1>
       <div class="botoes">
         ${(schema.links || []).map((l) => `<a class="btn" href="${l.href}">${icone(l.icone)} ${esc(l.rot)}</a>`).join('')}
-        ${podeEditar(schema) ? `<a class="btn pri" href="#/m/${schema.id}/novo">${icone('plus')} ${esc(schema.novo)}</a>` : ''}
+        ${podeEditar(schema) && !schema.novos ? `<a class="btn pri" href="#/m/${schema.id}/novo">${icone('plus')} ${esc(schema.novo)}</a>` : ''}
       </div>
     </div>
+    ${podeEditar(schema) && schema.novos ? `<div class="novos">${schema.novos.map((n) => `<a class="novo cor-${n.cor}" href="#/m/${schema.id}/novo?${new URLSearchParams(n.query)}">${icone(n.icone)}<span>${esc(n.rot)}</span></a>`).join('')}</div>` : ''}
     ${schema.agenda ? `<section class="agenda-secao">
       <h2>${icone('calendar-event')} Agendadas <span class="mudo" data-agenda-total></span></h2>
       <div class="agenda-lista"><div class="vazio">${icone('loader-2 girar')} Carregando…</div></div>
