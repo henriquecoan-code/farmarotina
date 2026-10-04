@@ -2,6 +2,8 @@ import { db } from '../db.js';
 import { podeVer, podeEditar, obterPerfilAtual } from '../perm.js';
 import { schemaPorId, visiveis } from '../modulos/index.js';
 import { FAIXAS, turnoAtual } from '../modulos/temperatura.js';
+import { mensagemTroca, nomeParceiro } from '../modulos/trocas.js';
+import { carregarRef } from '../form.js';
 import { linhaRegistro } from './lista.js';
 import {
   listarAgendadas, situacao, diasAte, telefones, cartaoAgenda, cartaoPrazo, botaoWhatsapp, mensagemRetorno,
@@ -17,9 +19,16 @@ function quando(iso) {
 const DIAS_AGENDA = 7;
 const resumo = (s, n = 80) => (String(s || '').length > n ? String(s).slice(0, n - 1) + '…' : String(s || ''));
 
-// Tudo que tem prazo, num lugar só: aplicações agendadas, lembretes de anotações e retornos de atendimento.
-async function montarAgenda(secao, { agendadas, notasRec, atendAbertos }) {
-  if (!agendadas && !notasRec && !atendAbertos) return;
+// Ações rápidas dos cartões da agenda: marcam o registro como resolvido sem abrir a tela dele
+const MARCAR = {
+  nota: { col: 'notas', dados: { resolvido: true }, msg: 'Lembrete marcado como resolvido' },
+  troca: { col: 'trocas', dados: { situacao: 'Concluída' }, msg: 'Troca concluída' },
+};
+const botaoMarcar = (tipo, id, rotulo, titulo) => `<button type="button" class="btn icone" data-marcar="${tipo}" data-id="${esc(id)}" title="${esc(titulo)}" aria-label="${esc(titulo)}">${icone('check')}<span class="so-celular">${esc(rotulo)}</span></button>`;
+
+// Tudo que tem prazo, num lugar só: aplicações agendadas, lembretes, retornos de atendimento e trocas.
+async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, trocasPend }) {
+  if (!agendadas && !notasRec && !atendAbertos && !trocasPend) return;
   secao.hidden = false;
   const tels = await telefones().catch(() => new Map());
   const itens = [];
@@ -31,7 +40,7 @@ async function montarAgenda(secao, { agendadas, notasRec, atendAbertos }) {
   for (const n of (notasRec || []).filter((x) => x.lembrete && !x.resolvido)) {
     itens.push({ data: n.lembrete, html: cartaoPrazo({
       data: n.lembrete, etiqueta: 'Anotação', genero: 'o', titulo: n.titulo, sub: resumo(n.texto), href: `#/m/notas/${n.id}`,
-      acoes: podeResolverNota ? `<button type="button" class="btn icone" data-resolver="${esc(n.id)}" title="Marcar como resolvido" aria-label="Marcar como resolvido">${icone('check')}<span class="so-celular">Resolvido</span></button>` : '',
+      acoes: podeResolverNota ? botaoMarcar('nota', n.id, 'Resolvido', 'Marcar como resolvido') : '',
     }) });
   }
   const podeResolverAtend = podeEditar(schemaPorId('atendimentos'));
@@ -41,6 +50,18 @@ async function montarAgenda(secao, { agendadas, notasRec, atendAbertos }) {
       sub: resumo(a.descricao), href: `#/m/atendimentos/${a.id}`,
       acoes: `${a.clienteId ? botaoWhatsapp(a, tels.get(a.clienteId), false, mensagemRetorno(a)) : ''}
         ${podeResolverAtend ? `<a class="btn icone" href="#/m/atendimentos/${a.id}/editar" title="Registrar a solução" aria-label="Registrar a solução">${icone('check')}<span class="so-celular">Resolver</span></a>` : ''}`,
+    }) });
+  }
+  const sTrocas = schemaPorId('trocas');
+  const telsParceiros = trocasPend?.length
+    ? new Map((await carregarRef('parceiros').catch(() => [])).map((p) => [p.id, p.telefone])) : new Map();
+  for (const t of (trocasPend || []).filter((x) => x.prazo)) {
+    const tel = t.telefone || telsParceiros.get(t.parceiroId);
+    itens.push({ data: t.prazo, html: cartaoPrazo({
+      data: t.prazo, etiqueta: 'Troca', genero: 'o', titulo: sTrocas.titulo(t), sub: `${t.tipo} · ${nomeParceiro(t)}`,
+      href: `#/m/trocas/${t.id}`,
+      acoes: `${tel ? botaoWhatsapp({ clienteNome: nomeParceiro(t) }, tel, false, mensagemTroca(t)) : ''}
+        ${podeEditar(sTrocas) ? botaoMarcar('troca', t.id, 'Concluída', 'Marcar a troca como concluída') : ''}`,
     }) });
   }
 
@@ -54,13 +75,14 @@ async function montarAgenda(secao, { agendadas, notasRec, atendAbertos }) {
   secao.querySelector('[data-mais]').textContent = depois ? `E mais ${depois} item(ns) depois disso.` : '';
 
   secao.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-resolver]');
+    const b = e.target.closest('[data-marcar]');
     if (!b) return;
+    const acao = MARCAR[b.dataset.marcar];
     b.disabled = true;
     try {
-      await db.atualizar('notas', b.dataset.resolver, { resolvido: true });
+      await db.atualizar(acao.col, b.dataset.id, acao.dados);
       b.closest('.agenda').remove();
-      toast('Lembrete marcado como resolvido', 'ok');
+      toast(acao.msg, 'ok');
     } catch (err) {
       b.disabled = false;
       toast(mensagemErro(err), 'erro');
@@ -104,13 +126,14 @@ export async function paginaInicio(main) {
   const avisos = pagina.querySelector('.avisos');
   const dia = hoje();
 
-  const [temps, afericoesHoje, atendAbertos, notasRec, inj, agendadas] = await Promise.all([
+  const [temps, afericoesHoje, atendAbertos, notasRec, inj, agendadas, trocasPend] = await Promise.all([
     podeVer('temperatura') ? seguro(db.listar('temperatura', { limite: 30 })) : null,
     podeVer('saude') ? seguro(db.listar('afericoes', { de: dia, ate: dia })) : null,
     podeVer('atendimento') ? seguro(db.listar('atendimentos', { onde: ['status', 'Aberto'] })) : null,
     podeVer('notas') ? seguro(db.listar('notas', { limite: 200 })) : null,
     podeVer('saude') ? seguro(db.listar('injetaveis', { limite: 10 })) : null,
     podeVer('saude') ? seguro(listarAgendadas('injetaveis')) : null,
+    podeVer('trocas') ? seguro(db.listar('trocas', { onde: ['situacao', 'Pendente'] })) : null,
   ]);
 
   const cards = [];
@@ -130,7 +153,7 @@ export async function paginaInicio(main) {
     const turno = turnoAtual();
     const faltam = Object.keys(FAIXAS).filter((local) => !temps.some((t) => t.local === local && t.turno === turno && String(t.dataHora).startsWith(dia)));
     if (faltam.length) {
-      avisos.append(html(`<a class="alerta atencao" href="#/m/temperatura/novo">${icone('temperature')}<span>Temperatura do turno da ${turno.toLowerCase()} ainda não registrada: ${esc(faltam.join(' e ').toLowerCase())}.</span>${icone('chevron-right')}</a>`));
+      avisos.append(html(`<a class="alerta atencao" href="#/m/temperatura/novo?local=${encodeURIComponent(faltam[0])}">${icone('temperature')}<span>Temperatura do turno da ${turno.toLowerCase()} ainda não registrada: ${esc(faltam.join(' e ').toLowerCase())}.</span>${icone('chevron-right')}</a>`));
     }
   }
   if (afericoesHoje) {
@@ -158,6 +181,14 @@ export async function paginaInicio(main) {
       selo: atrasados ? `${atrasados} com retorno atrasado` : '', nivel: atrasados ? 'atencao' : 'ok', href: '#/m/atendimentos',
     }));
   }
+  if (trocasPend) {
+    const s = schemaPorId('trocas');
+    const vencidas = trocasPend.filter((t) => s.alerta(t)?.nivel === 'perigo').length;
+    cards.push(cartaoNumero({
+      rotulo: 'Trocas pendentes', valor: trocasPend.length,
+      selo: vencidas ? `${vencidas} com prazo vencido` : '', nivel: vencidas ? 'perigo' : 'ok', href: '#/m/trocas',
+    }));
+  }
   if (notasRec) {
     const s = schemaPorId('notas');
     const lembretes = notasRec.filter((n) => s.alerta(n));
@@ -168,7 +199,7 @@ export async function paginaInicio(main) {
   }
   metricas.innerHTML = cards.join('');
 
-  await montarAgenda(pagina.querySelector('[data-agenda]'), { agendadas, notasRec, atendAbertos });
+  await montarAgenda(pagina.querySelector('[data-agenda]'), { agendadas, notasRec, atendAbertos, trocasPend });
 
   const recentes = [
     ...(afericoesHoje || []).map((d) => ({ s: schemaPorId('afericoes'), d })),

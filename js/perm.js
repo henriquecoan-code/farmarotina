@@ -4,6 +4,7 @@ export const MODULOS = [
   { id: 'saude', nome: 'Saúde (aferições e injetáveis)' },
   { id: 'temperatura', nome: 'Temperatura' },
   { id: 'atendimento', nome: 'Atendimento' },
+  { id: 'trocas', nome: 'Trocas entre farmácias' },
   { id: 'notas', nome: 'Anotações' },
   { id: 'fornecedores', nome: 'Fornecedores' },
   { id: 'pops', nome: 'POPs (leitura)' },
@@ -11,7 +12,7 @@ export const MODULOS = [
 
 export const PERFIS = {
   'Farmacêutico': MODULOS.map((m) => m.id),
-  'Atendente': ['clientes', 'temperatura', 'atendimento', 'notas', 'fornecedores', 'pops'],
+  'Atendente': ['clientes', 'temperatura', 'atendimento', 'trocas', 'notas', 'fornecedores', 'pops'],
 };
 
 let perfil = null;

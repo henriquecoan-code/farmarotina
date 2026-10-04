@@ -3,14 +3,14 @@
 import { agoraLocal, diasAtras, hoje } from './util.js';
 import { calcularProxima } from './modulos/saude.js';
 
-const CHAVE = 'farmarotina-demo-v3';
+const CHAVE = 'farmarotina-demo-v5';
 const SESSAO = 'farmarotina-demo-sessao';
-const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'pops'];
+const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'trocas', 'pops'];
 
 export const USUARIOS_DEMO = {
   'admin@demo': { nome: 'Ana (admin)', papel: 'admin', modulos: [], ativo: true },
   'farmaceutico@demo': { nome: 'Bruno (farmacêutico)', papel: 'usuario', modulos: TODOS, ativo: true },
-  'atendente@demo': { nome: 'Carla (atendente)', papel: 'usuario', modulos: ['clientes', 'temperatura', 'atendimento', 'notas', 'fornecedores', 'pops'], ativo: true },
+  'atendente@demo': { nome: 'Carla (atendente)', papel: 'usuario', modulos: ['clientes', 'temperatura', 'atendimento', 'trocas', 'notas', 'fornecedores', 'pops'], ativo: true },
 };
 
 const novoId = () => Math.random().toString(36).slice(2, 12);
@@ -67,6 +67,11 @@ function semente() {
   add('notas', { titulo: 'Reunião de equipe', dataHora: h(3, '18:10'), categoria: 'Equipe', texto: 'Revisar escala de dezembro e o POP de temperatura com todos.' });
 
   add('atendimentos', { dataHora: h(0, '11:00'), status: 'Aberto', clienteId: maria, clienteNome: 'Maria Souza', tipo: 'Encomenda', descricao: 'Losartana 50 mg genérico, 3 caixas.', retorno: hoje() });
+  const central = add('parceiros', { nome: 'Drogaria Central', contato: 'Fernanda', telefone: '(11) 95555-2020', endereco: 'Rua das Flores, 120' });
+  const popular = add('parceiros', { nome: 'Farmácia Popular do Bairro', contato: 'Marcos', telefone: '(11) 94444-3030' });
+  add('trocas', { dataHora: h(0, '15:40'), situacao: 'Pendente', tipo: 'Peguei emprestado', parceiroId: central, parceiroNome: 'Drogaria Central', contato: 'Fernanda', telefone: '(11) 95555-2020', produto: 'Amoxicilina 500 mg cx 21 cáps', quantidade: 2, prazo: diasAtras(-1), acerto: 'Devolver o mesmo produto' });
+  add('trocas', { dataHora: h(2, '10:10'), situacao: 'Pendente', tipo: 'Emprestei', parceiroId: popular, parceiroNome: 'Farmácia Popular do Bairro', contato: 'Marcos', telefone: '(11) 94444-3030', produto: 'Insulina NPH 10 mL', quantidade: 1, prazo: diasAtras(1), acerto: 'Devolver o mesmo produto' });
+  add('trocas', { dataHora: h(5, '17:00'), situacao: 'Concluída', tipo: 'Repassei (vencimento próximo)', parceiroId: central, parceiroNome: 'Drogaria Central', contato: 'Fernanda', produto: 'Protetor solar FPS 50', quantidade: 6, validade: diasAtras(-40), acerto: 'Pagamento' });
   add('atendimentos', { dataHora: h(2, '17:45'), status: 'Resolvido', tipo: 'Dúvida', clienteNome: 'Cliente de passagem', descricao: 'Interação entre ibuprofeno e losartana.', solucao: 'Orientado a preferir paracetamol e falar com o médico.' });
 
   add('pops', { codigo: 'POP-001', titulo: 'Aferição de pressão arterial', versao: '2', vigencia: '2026-01-15', responsavel: 'Farmacêutico RT', conteudo: '1. Cliente em repouso por 5 minutos, sentado, pés apoiados.\n2. Braço na altura do coração, manguito adequado.\n3. Realizar a medida e registrar no app.\n4. Valores ≥ 140/90: orientar e encaminhar à UBS.' });

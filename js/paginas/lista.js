@@ -24,9 +24,13 @@ export async function paginaLista(main, schema) {
 
   main.innerHTML = '';
   main.append(html(`<div class="pagina">
+    ${schema.voltar ? `<a class="voltar" href="${schema.voltar.href}">${icone('arrow-left')} ${esc(schema.voltar.rot)}</a>` : ''}
     <div class="pagina-topo">
       <h1>${icone(schema.icone)} ${esc(schema.nome)}</h1>
-      ${podeEditar(schema) ? `<a class="btn pri" href="#/m/${schema.id}/novo">${icone('plus')} ${esc(schema.novo)}</a>` : ''}
+      <div class="botoes">
+        ${(schema.links || []).map((l) => `<a class="btn" href="${l.href}">${icone(l.icone)} ${esc(l.rot)}</a>`).join('')}
+        ${podeEditar(schema) ? `<a class="btn pri" href="#/m/${schema.id}/novo">${icone('plus')} ${esc(schema.novo)}</a>` : ''}
+      </div>
     </div>
     ${schema.agenda ? `<section class="agenda-secao">
       <h2>${icone('calendar-event')} Agendadas <span class="mudo" data-agenda-total></span></h2>

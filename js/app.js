@@ -17,7 +17,7 @@ let perfil = null;
 const PREFERIDOS_CELULAR = ['afericoes', 'temperatura', 'atendimentos', 'clientes', 'notas'];
 
 function montarShell() {
-  const schemas = visiveis();
+  const schemas = visiveis().filter((s) => s.menu !== false);
   const links = [
     { href: '#/', icone: 'home', nome: 'Início', rota: '' },
     ...schemas.map((s) => ({ href: `#/m/${s.id}`, icone: s.icone, nome: s.nome, rota: s.id })),

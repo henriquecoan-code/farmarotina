@@ -1,3 +1,4 @@
+import { db } from '../db.js';
 import { fmtDataHora, fmtNum } from '../util.js';
 
 export const FAIXAS = { Geladeira: [2, 8], Ambiente: [15, 30] };
@@ -35,4 +36,14 @@ export const temperatura = {
   sub: (d) => `${fmtDataHora(d.dataHora)} · ${d.turno} · ${d.criadoPorNome || ''}`,
   valor: (d) => (d.min != null && d.max != null ? `mín ${fmtNum(d.min, 1)} · máx ${fmtNum(d.max, 1)}` : ''),
   alerta,
+  // Geladeira e ambiente são registrados juntos: depois de salvar um, abre o outro (se ainda faltar no turno).
+  aposCriar: async (vals) => {
+    const outro = Object.keys(FAIXAS).find((l) => l !== vals.local);
+    if (!outro || !vals.dataHora) return null;
+    const dia = vals.dataHora.slice(0, 10);
+    const doDia = await db.listar('temperatura', { de: dia, ate: dia }).catch(() => []);
+    if (doDia.some((t) => t.local === outro && t.turno === vals.turno)) return null;
+    const q = new URLSearchParams({ local: outro, turno: vals.turno, dataHora: vals.dataHora });
+    return { hash: `#/m/temperatura/novo?${q}`, msg: `${vals.local} salva. Agora registre ${outro === 'Ambiente' ? 'o ambiente' : 'a geladeira'}.` };
+  },
 };

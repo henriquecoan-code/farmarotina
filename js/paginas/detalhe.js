@@ -59,6 +59,7 @@ export async function paginaDetalhe(main, schema, id) {
 
   if (schema.agenda && d.agendaPendente) await blocoAgenda($('[data-agenda]', pagina), schema, d);
   if (schema.id === 'clientes') await historicoCliente($('[data-extra]', pagina), d);
+  if (schema.id === 'parceiros') await historicoParceiro($('[data-extra]', pagina), d);
   await renderAnexos($('[data-anexos]', pagina), schema.id, id, { podeAnexar: podeEditar(schema) });
 }
 
@@ -84,6 +85,29 @@ async function blocoAgenda(el, schema, d) {
       bloco.remove();
     } catch (e) { toast(mensagemErro(e), 'erro'); }
   };
+}
+
+// Trocas feitas com uma farmácia parceira (pendentes primeiro)
+async function historicoParceiro(el, parceiro) {
+  const s = schemaPorId('trocas');
+  const q = `?parceiroId=${encodeURIComponent(parceiro.id)}&parceiroNome=${encodeURIComponent(parceiro.nome)}`
+    + `${parceiro.contato ? `&contato=${encodeURIComponent(parceiro.contato)}` : ''}`
+    + `${parceiro.telefone ? `&telefone=${encodeURIComponent(parceiro.telefone)}` : ''}`;
+  const secao = html(`<section class="cartao">
+    <div class="cartao-topo"><h2>${icone('arrows-exchange')} Trocas com esta farmácia <span class="mudo" data-resumo></span></h2>
+    ${podeEditar(s) ? `<a class="btn pequeno" href="#/m/trocas/novo${q}">${icone('plus')} Nova troca</a>` : ''}</div>
+    <div class="lista"><div class="vazio">Carregando…</div></div></section>`);
+  el.append(secao);
+  let itens = [];
+  try {
+    itens = await db.listar('trocas', { onde: ['parceiroId', parceiro.id], ordem: 'dataHora', desc: true });
+  } catch { /* sem permissão ou offline */ }
+  itens.sort((a, b) => Number(a.situacao !== 'Pendente') - Number(b.situacao !== 'Pendente'));
+  const pendentes = itens.filter((t) => t.situacao === 'Pendente').length;
+  $('[data-resumo]', secao).textContent = itens.length ? `(${itens.length}${pendentes ? `, ${pendentes} pendente(s)` : ''})` : '';
+  $('.lista', secao).innerHTML = itens.length
+    ? itens.map((t) => linhaRegistro(s, t)).join('')
+    : '<div class="vazio">Nenhuma troca com esta farmácia ainda.</div>';
 }
 
 // Histórico do cliente: aferições, aplicações e atendimentos que o usuário pode ver.

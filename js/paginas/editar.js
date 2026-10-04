@@ -39,8 +39,11 @@ export async function paginaEditar(main, schema, id, query) {
       else ({ id: novoId, status } = await db.criar(schema.id, vals));
       if (schema.agenda && !id) await concluirAnteriores(schema.id, novoId, vals, query.get('origem'));
       limparCacheRef(schema.id);
-      toast(status === 'pendente' ? 'Salvo offline; será sincronizado quando houver internet' : 'Salvo', 'ok');
-      location.hash = `#/m/${schema.id}/${novoId}`;
+      // Alguns módulos emendam o próximo registro (ex.: temperatura da geladeira → do ambiente)
+      const proximo = !id && schema.aposCriar ? await schema.aposCriar(vals, novoId) : null;
+      if (status === 'pendente') toast('Salvo offline; será sincronizado quando houver internet', 'ok');
+      else toast(proximo?.msg || 'Salvo', 'ok');
+      location.hash = proximo?.hash || `#/m/${schema.id}/${novoId}`;
     },
   }));
 }

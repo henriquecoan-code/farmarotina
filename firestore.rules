@@ -109,6 +109,33 @@ service cloud.firestore {
       }
     }
 
+    match /trocas/{id} {
+      allow read: if pode('trocas');
+      allow create: if pode('trocas') && criacaoValida();
+      allow update: if pode('trocas') && (edicaoValida() || soContador());
+      allow delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('trocas');
+        allow create: if pode('trocas') && criacaoValida();
+        allow update: if pode('trocas') && edicaoValida();
+        allow delete: if admin();
+      }
+    }
+
+    // Farmácias parceiras: cadastro usado pelo módulo Trocas
+    match /parceiros/{id} {
+      allow read: if pode('trocas');
+      allow create: if pode('trocas') && criacaoValida();
+      allow update: if pode('trocas') && (edicaoValida() || soContador());
+      allow delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('trocas');
+        allow create: if pode('trocas') && criacaoValida();
+        allow update: if pode('trocas') && edicaoValida();
+        allow delete: if admin();
+      }
+    }
+
     match /notas/{id} {
       allow read: if pode('notas');
       allow create: if pode('notas') && criacaoValida();

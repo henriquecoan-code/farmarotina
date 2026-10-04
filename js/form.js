@@ -43,7 +43,7 @@ export function carregarRef(col) {
   return cacheRef.get(col);
 }
 
-function controleRef(campo, valor, nome) {
+function controleRef(campo, valor, nome, aoEscolher) {
   const alvo = schemaPorId(campo.col);
   const el = html(`<div class="ref">
     <div class="ref-entrada">${icone('search')}<input type="text" autocomplete="off" placeholder="Buscar pelo nome"></div>
@@ -54,11 +54,12 @@ function controleRef(campo, valor, nome) {
   input.value = sel.nome;
   if (sel.id) el.classList.add('escolhido');
 
-  const escolher = (id, n) => {
+  const escolher = (id, n, item) => {
     sel = { id, nome: n };
     input.value = n;
     el.classList.toggle('escolhido', !!id);
     lista.hidden = true;
+    if (item) aoEscolher?.(item);
     input.dispatchEvent(new Event('change', { bubbles: true }));
   };
 
@@ -70,7 +71,7 @@ function controleRef(campo, valor, nome) {
     for (const i of achados) {
       const extra = i.telefone || i.cnpj || '';
       const b = html(`<button type="button" class="ref-item"><span>${esc(i.nome)}</span><small>${esc(extra)}</small></button>`);
-      b.onclick = () => escolher(i.id, i.nome);
+      b.onclick = () => escolher(i.id, i.nome, i);
       lista.append(b);
     }
     if (input.value.trim() && alvo && podeEditar(alvo) && !achados.some((i) => normalizar(i.nome) === termo)) {
@@ -103,7 +104,7 @@ function cadastroRapido(schema, nome, escolher) {
       limparCacheRef(schema.id);
       fechar();
       toast(`${vals.nome} cadastrado`, 'ok');
-      escolher(id, vals.nome);
+      escolher(id, vals.nome, vals);
     },
   });
   ({ fechar } = abrirDialogo(schema.novo, form));
@@ -118,7 +119,7 @@ function lerNumero(s) {
 }
 
 // ---------- controles por tipo ----------
-function controle(campo, valor, dados) {
+function controle(campo, valor, dados, aoEscolher) {
   const k = esc(campo.k);
   switch (campo.tipo) {
     case 'textarea': {
@@ -158,7 +159,7 @@ function controle(campo, valor, dados) {
       return { el, get: () => $$('input:checked', el).map((i) => i.value) };
     }
     case 'opcoes': {
-      if (campo.opcoes.length <= 4) {
+      if (campo.opcoes.length <= 4 && !campo.lista) {
         const nomeGrupo = `${campo.k}-${Math.random().toString(36).slice(2, 7)}`;
         const el = html(`<div class="seg" role="radiogroup">${campo.opcoes.map((o) => `<label><input type="radio" name="${nomeGrupo}" value="${esc(o)}" ${o === valor ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('')}</div>`);
         return { el, get: () => $('input:checked', el)?.value ?? null };
@@ -167,12 +168,12 @@ function controle(campo, valor, dados) {
       return { el, get: () => el.value || null };
     }
     case 'ref':
-      return controleRef(campo, valor, dados[nomeRef(campo.k)]);
+      return controleRef(campo, valor, dados[nomeRef(campo.k)], aoEscolher);
     default: {
       const tipo = { tel: 'tel', email: 'email' }[campo.tipo] || 'text';
       const el = html(`<input type="${tipo}" name="${k}">`);
       el.value = valor ?? '';
-      return { el, get: () => el.value.trim() || null };
+      return { el, get: () => el.value.trim() || null, set: (x) => { el.value = x ?? ''; } };
     }
   }
 }
@@ -196,7 +197,7 @@ export function renderForm(schema, dados = {}, { onSalvar, onCancelar, rotuloSal
   const controles = [];
 
   for (const campo of schema.campos) {
-    const ctl = controle(campo, inicial[campo.k], inicial);
+    const ctl = controle(campo, inicial[campo.k], inicial, (item) => preencher(campo, item));
     const wrap = html(`<div class="campo ${campo.lg ? 'lg-' + campo.lg : ''}" data-k="${esc(campo.k)}"></div>`);
     if (campo.tipo !== 'simnao') {
       wrap.append(html(`<label class="rotulo">${esc(campo.rot)}${campo.obrig ? ' <b class="obrig" title="Obrigatório">*</b>' : ''}${campo.ajuda ? ` <small>${esc(campo.ajuda)}</small>` : ''}</label>`));
@@ -219,6 +220,15 @@ export function renderForm(schema, dados = {}, { onSalvar, onCancelar, rotuloSal
       }
     }
     return v;
+  }
+
+  // Ao escolher um cadastro (ex.: farmácia parceira), copia dados dele para campos vazios do formulário.
+  // campo.preencher = { campoDoFormulario: 'campoDoCadastro' }
+  function preencher(campo, item) {
+    for (const [destino, origem] of Object.entries(campo.preencher || {})) {
+      const c = controles.find((x) => x.campo.k === destino);
+      if (c && item[origem] && !c.ctl.get()) c.ctl.set?.(item[origem]);
+    }
   }
 
   // Campos calculados (ex.: próxima aplicação): recalculam sozinhos até o usuário alterá-los à mão.
