@@ -547,3 +547,4 @@ input[type=checkbox], input[type=radio] { width: auto; min-height: 0; accent-col
 .config-atalhos { margin-top: 8px; }
 .config-atalhos .chip span { display: inline-flex; align-items: center; gap: 4px; }
 @media (max-width: 860px) { .so-desktop { display: none !important; } }
+.config-subtitulo { margin-top: 14px; }

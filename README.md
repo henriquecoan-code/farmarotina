@@ -79,6 +79,7 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
   - Esconder um item só tira do menu; o acesso continua.
 - **Barra de atalhos do celular:** escolha os 3 botões de baixo.
 - **Atalhos da tela inicial:** escolha quais botões de "Novo…" aparecem.
+- **Ocultar métricas:** esconde os números do topo da tela inicial (avisos e Agenda continuam).
 - **Restaurar padrão** desfaz tudo.
 - As preferências ficam salvas na conta da pessoa (vale no celular e no computador). Módulos liberados depois aparecem sozinhos no fim do menu.
 

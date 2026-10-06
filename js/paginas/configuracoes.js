@@ -33,7 +33,11 @@ export async function paginaConfiguracoes(main) {
     </section>
 
     <section class="cartao">
-      <div class="cartao-topo"><h2>${icone('bolt')} Atalhos da tela inicial</h2></div>
+      <div class="cartao-topo"><h2>${icone('home')} Tela inicial</h2></div>
+      <label class="check"><input type="checkbox" data-ocultar-metricas ${prefs().ocultarMetricas ? 'checked' : ''}>
+        <span>Ocultar os números (métricas) da tela inicial</span></label>
+      <p class="mudo pequeno">Os avisos e a Agenda continuam aparecendo.</p>
+      <div class="rotulo config-subtitulo">Atalhos</div>
       <p class="mudo pequeno">Botões de "Novo…" que aparecem no início.</p>
       <div class="config-atalhos chips"></div>
     </section>
@@ -45,6 +49,7 @@ export async function paginaConfiguracoes(main) {
   desenharMenu($('.config-menu', pagina));
   desenharBarra($('.config-barra', pagina));
   desenharAtalhos($('.config-atalhos', pagina));
+  $('[data-ocultar-metricas]', pagina).onchange = (e) => salvar({ ocultarMetricas: e.target.checked });
 
   $('[data-restaurar]', pagina).onclick = async () => {
     if (!confirm('Voltar o menu, a barra do celular e os atalhos ao padrão?')) return;

@@ -5,7 +5,7 @@ import { FAIXAS, turnoAtual, normalizarTemp, foraDaFaixa } from '../modulos/temp
 import { mensagemTroca, nomeParceiro } from '../modulos/trocas.js';
 import { carregarRef } from '../form.js';
 import { linhaRegistro, botaoAcaoRapida } from './lista.js';
-import { atalhosInicio } from '../preferencias.js';
+import { atalhosInicio, prefs } from '../preferencias.js';
 import { descreverFrequencia } from '../modulos/rotinas.js';
 import {
   listarAgendadas, situacao, diasAte, telefones, cartaoAgenda, cartaoPrazo, botaoWhatsapp, mensagemRetorno,
@@ -98,7 +98,7 @@ export async function paginaInicio(main) {
   const pagina = html(`<div class="pagina">
     <div class="pagina-topo"><div><h1>${saudacao}, ${esc(primeiroNome)}</h1><div class="mudo primeira-maiuscula">${esc(dataExtenso)}</div></div></div>
     <div class="avisos"></div>
-    <div class="metricas"></div>
+    <div class="metricas" ${prefs().ocultarMetricas ? 'hidden' : ''}></div>
     <div class="atalhos">${atalhosInicio()
       .map((s) => `<a class="atalho" href="#/m/${s.id}/novo">${icone(s.icone)}<span>${esc(s.novo)}</span></a>`).join('')}</div>
     <section class="agenda-secao" data-agenda hidden>
