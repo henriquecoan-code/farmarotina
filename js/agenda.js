@@ -3,7 +3,8 @@
 import { db } from './db.js';
 import * as config from './config.js';
 import { carregarRef } from './form.js';
-import { esc, icone, hoje, fmtData, normalizar } from './util.js';
+import { esc, icone, hoje, fmtData, normalizar, agoraLocal, toast, mensagemErro } from './util.js';
+import { calcularProxima } from './modulos/saude.js';
 
 const DIA = 86_400_000;
 const meioDia = (iso) => new Date(`${String(iso).slice(0, 10)}T12:00`);
@@ -82,15 +83,44 @@ export function botaoWhatsapp(d, telefone, comTexto = false, texto = mensagemWha
   return `<a class="btn ${comTexto ? '' : 'icone'} whats" href="${esc(link)}" target="_blank" rel="noopener" title="Avisar ${esc(d.clienteNome || 'cliente')} pelo WhatsApp" aria-label="Avisar pelo WhatsApp">${icone('brand-whatsapp')}${rotulo}</a>`;
 }
 
-// Link para registrar a próxima aplicação já preenchida com os dados desta
-export function linkRegistrar(schemaId, d) {
-  const p = new URLSearchParams();
-  const copiar = { origem: d.id, clienteId: d.clienteId, clienteNome: d.clienteNome, medicamento: d.medicamento, lote: d.lote, validade: d.validade, via: d.via,
-    local: d.local, intervalo: d.intervalo, intervaloDias: d.intervaloDias, totalDoses: d.totalDoses,
-    dose: d.dose ? d.dose + 1 : '', receita: d.receita ? 'true' : '', prescritor: d.prescritor, registroProf: d.registroProf };
-  for (const [k, v] of Object.entries(copiar)) if (v !== undefined && v !== null && v !== '') p.set(k, v);
-  return `#/m/${schemaId}/novo?${p}`;
+// Registra a aplicação agendada direto (sem abrir o formulário): cria o registro de hoje com os
+// mesmos dados, avança a dose, calcula a próxima data e dá baixa no agendamento anterior.
+const COPIAR = ['clienteId', 'clienteNome', 'medicamento', 'lote', 'validade', 'via', 'local', 'receita',
+  'prescritor', 'registroProf', 'intervalo', 'intervaloDias', 'totalDoses'];
+
+export async function registrarAplicacao(schemaId, d) {
+  const vals = Object.fromEntries(COPIAR.map((k) => [k, d[k] ?? null]));
+  vals.dataHora = agoraLocal();
+  vals.dose = d.dose ? d.dose + 1 : null;
+  vals.proxima = calcularProxima(vals);
+  const preparado = prepararAgenda(vals, null);
+  const { id } = await db.criar(schemaId, preparado);
+  await concluirAnteriores(schemaId, id, preparado, d.id);
+  return preparado;
 }
+
+export function botaoRegistrar(schemaId, d, comTexto = false) {
+  return `<button type="button" class="btn ${comTexto ? '' : 'icone'}" data-registrar data-schema="${esc(schemaId)}" data-id="${esc(d.id)}" title="Registrar a aplicação de hoje" aria-label="Registrar a aplicação de hoje">${icone('check')}${comTexto ? ' Registrar aplicação' : '<span class="so-celular">Registrar</span>'}</button>`;
+}
+
+// Clique em "Registrar" (agendadas, Agenda da tela inicial e página da aplicação)
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-registrar]');
+  if (!b) return;
+  e.preventDefault();
+  b.disabled = true;
+  try {
+    const d = await db.obter(b.dataset.schema, b.dataset.id);
+    const dose = d.dose ? ` (dose ${d.dose + 1}${d.totalDoses ? ` de ${d.totalDoses}` : ''})` : '';
+    if (!confirm(`Registrar a aplicação de hoje para ${d.clienteNome || 'o cliente'}${dose}?`)) { b.disabled = false; return; }
+    const novo = await registrarAplicacao(b.dataset.schema, d);
+    toast(novo.proxima ? `Aplicação registrada. Próxima: ${fmtData(novo.proxima)}` : 'Aplicação registrada. Tratamento concluído.', 'ok');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  } catch (err) {
+    b.disabled = false;
+    toast(mensagemErro(err), 'erro');
+  }
+});
 
 // Cartão genérico de algo com prazo: amarelo no dia, vermelho se passou.
 export function cartaoPrazo({ data, titulo, sub, href, etiqueta, genero, acoes = '', atributos = '' }) {
@@ -109,7 +139,7 @@ export function cartaoAgenda(schemaId, d, telefone, etiqueta = '') {
     data: d.proxima, etiqueta, titulo: d.clienteNome || 'Sem cliente',
     sub: [d.medicamento, dose].filter(Boolean).join(' · '), href: `#/m/${schemaId}/${d.id}`,
     acoes: `${botaoWhatsapp(d, telefone)}
-      <a class="btn icone" href="${linkRegistrar(schemaId, d)}" title="Registrar esta aplicação" aria-label="Registrar esta aplicação">${icone('check')}<span class="so-celular">Registrar</span></a>`,
+      ${botaoRegistrar(schemaId, d)}`,
   });
 }
 

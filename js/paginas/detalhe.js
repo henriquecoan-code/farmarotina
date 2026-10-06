@@ -4,11 +4,12 @@ import { schemaPorId } from '../modulos/index.js';
 import { fmtValor, campoVisivel, htmlAlerta, limparCacheRef } from '../form.js';
 import { renderAnexos } from '../anexos.js';
 import { linhaRegistro, botaoAcaoRapida } from './lista.js';
-import { telefones, textoQuando, situacao, botaoWhatsapp, linkRegistrar, encerrarAgenda } from '../agenda.js';
+import { telefones, textoQuando, situacao, botaoWhatsapp, botaoRegistrar, encerrarAgenda } from '../agenda.js';
 import { $, esc, html, icone, fmtData, fmtDataHora, toast, mensagemErro } from '../util.js';
 
 export async function paginaDetalhe(main, schema, id) {
-  const d = await db.obter(schema.id, id);
+  const bruto = await db.obter(schema.id, id);
+  const d = bruto && schema.normalizar ? schema.normalizar(bruto) : bruto;
   if (!d) {
     main.innerHTML = `<div class="pagina"><div class="vazio">Registro não encontrado. <a href="#/m/${schema.id}">Voltar</a></div></div>`;
     return;
@@ -35,7 +36,7 @@ export async function paginaDetalhe(main, schema, id) {
     <div data-agenda></div>
     <section class="cartao">
       <dl class="campos">
-        ${campos.map(({ c, v }) => `<div class="${longos(c) ? 'largo' : ''}"><dt>${esc(c.rot)}</dt><dd class="${longos(c) ? 'texto-longo' : ''}">${esc(v)}</dd></div>`).join('')}
+        ${campos.map(({ c, v }) => `<div class="${longos(c) ? 'largo' : ''}"><dt>${esc(c.rotLongo || c.rot)}</dt><dd class="${longos(c) ? 'texto-longo' : ''}">${esc(v)}</dd></div>`).join('')}
       </dl>
       <div class="meta mudo">
         Registrado por ${esc(d.criadoPorNome || '—')} em ${fmtDataHora(d.criadoLocal)}
@@ -61,6 +62,7 @@ export async function paginaDetalhe(main, schema, id) {
   if (schema.agenda && d.agendaPendente) await blocoAgenda($('[data-agenda]', pagina), schema, d);
   if (schema.id === 'clientes') await historicoCliente($('[data-extra]', pagina), d);
   if (schema.id === 'parceiros') await historicoParceiro($('[data-extra]', pagina), d);
+  if (schema.detalheExtra) $('[data-extra]', pagina).insertAdjacentHTML('beforeend', schema.detalheExtra(d));
   await renderAnexos($('[data-anexos]', pagina), schema.id, id, { podeAnexar: podeEditar(schema) });
 }
 
@@ -73,7 +75,7 @@ async function blocoAgenda(el, schema, d) {
       <span>Próxima aplicação: <b>${fmtData(d.proxima)}</b> (${esc(quando)})</span></div>
     <div class="botoes">
       ${botaoWhatsapp(d, tels.get(d.clienteId), true)}
-      ${podeEditar(schema) ? `<a class="btn" href="${linkRegistrar(schema.id, d)}">${icone('check')} Registrar aplicação</a>
+      ${podeEditar(schema) ? `${botaoRegistrar(schema.id, d, true)}
       <button type="button" class="btn" data-encerrar>${icone('calendar-off')} Encerrar agendamento</button>` : ''}
     </div></section>`);
   el.append(bloco);

@@ -197,6 +197,11 @@ export function renderForm(schema, dados = {}, { onSalvar, onCancelar, rotuloSal
   const controles = [];
 
   for (const campo of schema.campos) {
+    // tipo 'secao': só um título separando grupos de campos (não guarda valor)
+    if (campo.tipo === 'secao') {
+      grade.append(html(`<div class="secao-form">${campo.icone ? icone(campo.icone) : ''} ${esc(campo.rot)}</div>`));
+      continue;
+    }
     const ctl = controle(campo, inicial[campo.k], inicial, (item) => preencher(campo, item));
     const wrap = html(`<div class="campo ${campo.lg ? 'lg-' + campo.lg : ''}" data-k="${esc(campo.k)}"></div>`);
     if (campo.tipo !== 'simnao') {

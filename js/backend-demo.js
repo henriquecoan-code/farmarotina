@@ -2,10 +2,11 @@
 // mas guarda tudo no localStorage deste navegador. Serve para testar o app sem Firebase.
 import { agoraLocal, diasAtras, hoje } from './util.js';
 import { calcularProxima } from './modulos/saude.js';
+import { ocorrencia } from './modulos/rotinas.js';
 
-const CHAVE = 'farmarotina-demo-v5';
+const CHAVE = 'farmarotina-demo-v7';
 const SESSAO = 'farmarotina-demo-sessao';
-const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'trocas', 'pops'];
+const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'trocas', 'pops', 'rotinas'];
 
 export const USUARIOS_DEMO = {
   'admin@demo': { nome: 'Ana (admin)', papel: 'admin', modulos: [], ativo: true },
@@ -55,11 +56,13 @@ function semente() {
   injetavel({ clienteId: maria, clienteNome: 'Maria Souza', dataHora: h(2, '09:30'), medicamento: 'Cianocobalamina 5.000 mcg', lote: 'CN7781', validade: '2027-08-31', via: 'IM', local: 'Deltoide', receita: true, prescritor: 'Dr. Alves', intervalo: 'A cada 2 dias', dose: 2, totalDoses: 5 });
   injetavel({ clienteId: joao, clienteNome: 'João Pereira', dataHora: `${diasAtras(33)}T16:00`, medicamento: 'Decanoato de haloperidol 50 mg', lote: 'HD0042', validade: '2027-01-31', via: 'IM', local: 'Glúteo', receita: true, intervalo: 'Mensal' });
 
-  for (let d = 6; d >= 0; d--) {
-    add('temperatura', { dataHora: h(d, '08:00'), turno: 'Manhã', local: 'Geladeira', atual: 4.5 + (d % 3) * 0.6, min: 3.1, max: 6.2 });
-    add('temperatura', { dataHora: h(d, '08:02'), turno: 'Manhã', local: 'Ambiente', atual: 23 + (d % 4), min: 21, max: 27, umidade: 55 });
-    if (d > 0) add('temperatura', { dataHora: h(d, '16:00'), turno: 'Tarde', local: 'Geladeira', atual: d === 3 ? 8.9 : 5.1, min: 3.4, max: d === 3 ? 9.4 : 6.5, acao: d === 3 ? 'Porta mal fechada. Ajustada e reconferida após 30 min (5,8 °C).' : '' });
+  for (let d = 5; d >= 0; d--) {
+    add('temperatura', { dataHora: h(d, '08:00'), turno: 'Manhã', gelAtual: 4.5 + (d % 3) * 0.6, gelMin: 3.1, gelMax: 6.2, ambAtual: 23 + (d % 4), ambMin: 21, ambMax: 27, umidade: 55 });
+    if (d > 0) add('temperatura', { dataHora: h(d, '16:00'), turno: 'Tarde', gelAtual: d === 3 ? 8.9 : 5.1, gelMin: 3.4, gelMax: d === 3 ? 9.4 : 6.5, ambAtual: 26, ambMin: 22, ambMax: 28, umidade: 60, acao: d === 3 ? 'Porta mal fechada. Ajustada e reconferida após 30 min (5,8 °C).' : null });
   }
+  // Formato antigo (um registro por local), para conferir que continua aparecendo
+  add('temperatura', { dataHora: h(6, '08:00'), turno: 'Manhã', local: 'Geladeira', atual: 4.8, min: 3.0, max: 6.0 });
+  add('temperatura', { dataHora: h(6, '08:02'), turno: 'Manhã', local: 'Ambiente', atual: 24, min: 21, max: 26, umidade: 58 });
 
   add('fornecedores', { nome: 'Distribuidora Saúde Ltda.', cnpj: '12.345.678/0001-90', contato: 'Roberto', telefone: '(11) 3333-4444', email: 'vendas@exemplo.com.br', horarioLimite: '14:00', prazo: '24 h', produtos: 'Medicamentos, perfumaria' });
   add('fornecedores', { nome: 'Genéricos Brasil Distribuidora', contato: 'Patrícia', telefone: '(11) 4002-1000', horarioLimite: '17:30', prazo: '2 dias úteis', produtos: 'Genéricos e similares', obs: 'Pedido mínimo de R$ 500.' });
@@ -74,6 +77,10 @@ function semente() {
   add('trocas', { dataHora: h(5, '17:00'), situacao: 'Concluída', tipo: 'Repassei (vencimento próximo)', parceiroId: central, parceiroNome: 'Drogaria Central', contato: 'Fernanda', produto: 'Protetor solar FPS 50', quantidade: 6, validade: diasAtras(-40), acerto: 'Pagamento' });
   add('atendimentos', { dataHora: h(2, '17:45'), status: 'Resolvido', tipo: 'Dúvida', clienteNome: 'Cliente de passagem', descricao: 'Interação entre ibuprofeno e losartana.', solucao: 'Orientado a preferir paracetamol e falar com o médico.' });
 
+  const inicioMes = `${hoje().slice(0, 8)}01`;
+  add('rotinas', { titulo: 'Enviar relatório CST e exportar XML para a contabilidade', frequencia: 'Mensal', diaMes: 1, proxima: inicioMes, responsavel: 'Ana', ativa: true, descricao: '1. Gerar o relatório CST do mês anterior no sistema.\n2. Exportar os XML das notas de entrada e saída.\n3. Enviar tudo por e-mail para a contabilidade.' });
+  add('rotinas', { titulo: 'Atualizar estoque mínimo e demanda por curva ABC', frequencia: 'Mensal', diaMes: 1, proxima: inicioMes, responsavel: 'Bruno', ativa: true, descricao: 'Rodar a curva ABC dos últimos 90 dias e ajustar o estoque mínimo dos itens A e B.' });
+  add('rotinas', { titulo: 'Conferir validades da prateleira', frequencia: 'Semanal', diaSemana: 'Segunda', proxima: ocorrencia({ frequencia: 'Semanal', diaSemana: 'Segunda' }), ativa: true });
   add('pops', { codigo: 'POP-001', titulo: 'Aferição de pressão arterial', versao: '2', vigencia: '2026-01-15', responsavel: 'Farmacêutico RT', conteudo: '1. Cliente em repouso por 5 minutos, sentado, pés apoiados.\n2. Braço na altura do coração, manguito adequado.\n3. Realizar a medida e registrar no app.\n4. Valores ≥ 140/90: orientar e encaminhar à UBS.' });
   add('pops', { codigo: 'POP-002', titulo: 'Controle de temperatura da geladeira', versao: '1', vigencia: '2026-01-15', responsavel: 'Farmacêutico RT', conteudo: '1. Registrar temperatura atual, mínima e máxima no início de cada turno.\n2. Faixa aceitável: 2 °C a 8 °C.\n3. Fora da faixa: registrar ação corretiva e avisar o RT.' });
   return b;

@@ -136,6 +136,19 @@ service cloud.firestore {
       }
     }
 
+    match /rotinas/{id} {
+      allow read: if pode('rotinas');
+      allow create: if pode('rotinas') && criacaoValida();
+      allow update: if pode('rotinas') && (edicaoValida() || soContador());
+      allow delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('rotinas');
+        allow create: if pode('rotinas') && criacaoValida();
+        allow update: if pode('rotinas') && edicaoValida();
+        allow delete: if admin();
+      }
+    }
+
     match /notas/{id} {
       allow read: if pode('notas');
       allow create: if pode('notas') && criacaoValida();

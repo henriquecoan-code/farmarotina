@@ -56,6 +56,11 @@ export const notas = {
     if (v.lembrete === hoje()) return { nivel: 'atencao', msg: 'Lembrete para hoje.' };
     return null;
   },
+  acaoRapida: {
+    rot: 'Resolvido', icone: 'check', msg: 'Lembrete marcado como resolvido',
+    quando: (d) => !!d.lembrete && !d.resolvido,
+    dados: () => ({ resolvido: true }),
+  },
 };
 
 // "14:00" → minutos desde 00:00, para comparar com a hora atual

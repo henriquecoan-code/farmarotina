@@ -1,14 +1,15 @@
 import { db } from '../db.js';
 import { podeVer, podeEditar, obterPerfilAtual } from '../perm.js';
 import { schemaPorId, visiveis } from '../modulos/index.js';
-import { FAIXAS, turnoAtual } from '../modulos/temperatura.js';
+import { FAIXAS, turnoAtual, normalizarTemp, foraDaFaixa } from '../modulos/temperatura.js';
 import { mensagemTroca, nomeParceiro } from '../modulos/trocas.js';
 import { carregarRef } from '../form.js';
-import { linhaRegistro } from './lista.js';
+import { linhaRegistro, botaoAcaoRapida } from './lista.js';
+import { descreverFrequencia } from '../modulos/rotinas.js';
 import {
   listarAgendadas, situacao, diasAte, telefones, cartaoAgenda, cartaoPrazo, botaoWhatsapp, mensagemRetorno,
 } from '../agenda.js';
-import { esc, html, icone, hoje, fmtNum, fmtDataHora, toast, mensagemErro } from '../util.js';
+import { esc, html, icone, hoje, fmtNum, fmtDataHora } from '../util.js';
 
 // "hoje 08:00" ou "02/10 16:00"
 function quando(iso) {
@@ -19,16 +20,9 @@ function quando(iso) {
 const DIAS_AGENDA = 7;
 const resumo = (s, n = 80) => (String(s || '').length > n ? String(s).slice(0, n - 1) + '…' : String(s || ''));
 
-// Ações rápidas dos cartões da agenda: marcam o registro como resolvido sem abrir a tela dele
-const MARCAR = {
-  nota: { col: 'notas', dados: { resolvido: true }, msg: 'Lembrete marcado como resolvido' },
-  troca: { col: 'trocas', dados: () => schemaPorId('trocas').acaoRapida.dados(), msg: 'Troca concluída' },
-};
-const botaoMarcar = (tipo, id, rotulo, titulo) => `<button type="button" class="btn icone" data-marcar="${tipo}" data-id="${esc(id)}" title="${esc(titulo)}" aria-label="${esc(titulo)}">${icone('check')}<span class="so-celular">${esc(rotulo)}</span></button>`;
-
 // Tudo que tem prazo, num lugar só: aplicações agendadas, lembretes, retornos de atendimento e trocas.
-async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, trocasPend }) {
-  if (!agendadas && !notasRec && !atendAbertos && !trocasPend) return;
+async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, trocasPend, rotinasAtivas }) {
+  if (!agendadas && !notasRec && !atendAbertos && !trocasPend && !rotinasAtivas) return;
   secao.hidden = false;
   const tels = await telefones().catch(() => new Map());
   const itens = [];
@@ -36,11 +30,11 @@ async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, trocasPe
   for (const d of agendadas || []) {
     itens.push({ data: d.proxima, html: cartaoAgenda('injetaveis', d, tels.get(d.clienteId), 'Aplicação') });
   }
-  const podeResolverNota = podeEditar(schemaPorId('notas'));
+  const sNotas = schemaPorId('notas');
   for (const n of (notasRec || []).filter((x) => x.lembrete && !x.resolvido)) {
     itens.push({ data: n.lembrete, html: cartaoPrazo({
       data: n.lembrete, etiqueta: 'Anotação', genero: 'o', titulo: n.titulo, sub: resumo(n.texto), href: `#/m/notas/${n.id}`,
-      acoes: podeResolverNota ? botaoMarcar('nota', n.id, 'Resolvido', 'Marcar como resolvido') : '',
+      acoes: botaoAcaoRapida(sNotas, n, true),
     }) });
   }
   const podeResolverAtend = podeEditar(schemaPorId('atendimentos'));
@@ -61,7 +55,15 @@ async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, trocasPe
       data: t.prazo, etiqueta: 'Troca', genero: 'o', titulo: sTrocas.titulo(t), sub: `${t.tipo} · ${nomeParceiro(t)}`,
       href: `#/m/trocas/${t.id}`,
       acoes: `${tel ? botaoWhatsapp({ clienteNome: nomeParceiro(t) }, tel, false, mensagemTroca(t)) : ''}
-        ${podeEditar(sTrocas) ? botaoMarcar('troca', t.id, 'Concluída', 'Marcar a troca como concluída') : ''}`,
+        ${botaoAcaoRapida(sTrocas, t, true)}`,
+    }) });
+  }
+  const sRotinas = schemaPorId('rotinas');
+  for (const r of rotinasAtivas || []) {
+    itens.push({ data: r.proxima, html: cartaoPrazo({
+      data: r.proxima, etiqueta: 'Rotina', genero: 'a', titulo: r.titulo,
+      sub: [descreverFrequencia(r), r.responsavel && `resp.: ${r.responsavel}`].filter(Boolean).join(' · '),
+      href: `#/m/rotinas/${r.id}`, acoes: botaoAcaoRapida(sRotinas, r, true),
     }) });
   }
 
@@ -73,21 +75,6 @@ async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, trocasPe
     ? proximos.map((i) => i.html).join('')
     : `<div class="vazio">Nada com prazo para os próximos ${DIAS_AGENDA} dias.</div>`;
   secao.querySelector('[data-mais]').textContent = depois ? `E mais ${depois} item(ns) depois disso.` : '';
-
-  secao.addEventListener('click', async (e) => {
-    const b = e.target.closest('[data-marcar]');
-    if (!b) return;
-    const acao = MARCAR[b.dataset.marcar];
-    b.disabled = true;
-    try {
-      await db.atualizar(acao.col, b.dataset.id, typeof acao.dados === 'function' ? acao.dados() : acao.dados);
-      b.closest('.agenda').remove();
-      toast(acao.msg, 'ok');
-    } catch (err) {
-      b.disabled = false;
-      toast(mensagemErro(err), 'erro');
-    }
-  });
 }
 
 const seguro =(p) => p.catch((e) => { console.error(e); return []; });
@@ -111,7 +98,7 @@ export async function paginaInicio(main) {
     <div class="pagina-topo"><div><h1>${saudacao}, ${esc(primeiroNome)}</h1><div class="mudo primeira-maiuscula">${esc(dataExtenso)}</div></div></div>
     <div class="avisos"></div>
     <div class="metricas"></div>
-    <div class="atalhos">${visiveis().filter(podeEditar).filter((s) => s.id !== 'pops')
+    <div class="atalhos">${visiveis().filter(podeEditar).filter((s) => s.menu !== false && !['pops', 'rotinas'].includes(s.id))
       .map((s) => `<a class="atalho" href="#/m/${s.id}/novo">${icone(s.icone)}<span>${esc(s.novo)}</span></a>`).join('')}</div>
     <section class="agenda-secao" data-agenda hidden>
       <div><h2>${icone('calendar-event')} Agenda <span class="mudo" data-total></span></h2>
@@ -126,7 +113,7 @@ export async function paginaInicio(main) {
   const avisos = pagina.querySelector('.avisos');
   const dia = hoje();
 
-  const [temps, afericoesHoje, atendAbertos, notasRec, inj, agendadas, trocasPend] = await Promise.all([
+  const [temps, afericoesHoje, atendAbertos, notasRec, inj, agendadas, trocasPend, rotinasTodas] = await Promise.all([
     podeVer('temperatura') ? seguro(db.listar('temperatura', { limite: 30 })) : null,
     podeVer('saude') ? seguro(db.listar('afericoes', { de: dia, ate: dia })) : null,
     podeVer('atendimento') ? seguro(db.listar('atendimentos', { onde: ['status', 'Aberto'] })) : null,
@@ -134,26 +121,31 @@ export async function paginaInicio(main) {
     podeVer('saude') ? seguro(db.listar('injetaveis', { limite: 10 })) : null,
     podeVer('saude') ? seguro(listarAgendadas('injetaveis')) : null,
     podeVer('trocas') ? seguro(db.listar('trocas', { onde: ['situacao', 'Pendente'] })) : null,
+    podeVer('rotinas') ? seguro(db.listar('rotinas', { ordem: 'proxima', desc: false, limite: 200 })) : null,
   ]);
+  const rotinasAtivas = rotinasTodas && rotinasTodas.filter((r) => r.ativa !== false && r.proxima);
 
   const cards = [];
   if (temps) {
-    const sTemp = schemaPorId('temperatura');
+    const regs = temps.map(normalizarTemp);
+    const prefixo = { Geladeira: 'gel', Ambiente: 'amb' };
     for (const local of Object.keys(FAIXAS)) {
-      const ult = temps.find((t) => t.local === local);
-      const a = ult && sTemp.alerta(ult);
+      const p = prefixo[local];
+      const ult = regs.find((t) => typeof t[`${p}Atual`] === 'number');
+      const fora = ult && foraDaFaixa(ult, local);
       cards.push(cartaoNumero({
         rotulo: `${local} · última`,
-        valor: ult ? `${fmtNum(ult.atual, 1)} °C` : '—',
-        selo: ult ? (a ? 'Fora da faixa' : `Na faixa · ${quando(ult.dataHora)}`) : 'Sem registro',
-        nivel: !ult ? 'atencao' : a ? 'perigo' : 'ok',
+        valor: ult ? `${fmtNum(ult[`${p}Atual`], 1)} °C` : '—',
+        selo: ult ? (fora ? 'Fora da faixa' : `Na faixa · ${quando(ult.dataHora)}`) : 'Sem registro',
+        nivel: !ult ? 'atencao' : fora ? 'perigo' : 'ok',
         href: ult ? `#/m/temperatura/${ult.id}` : '#/m/temperatura/novo',
       }));
     }
     const turno = turnoAtual();
-    const faltam = Object.keys(FAIXAS).filter((local) => !temps.some((t) => t.local === local && t.turno === turno && String(t.dataHora).startsWith(dia)));
+    const doTurno = regs.filter((t) => t.turno === turno && String(t.dataHora).startsWith(dia));
+    const faltam = Object.keys(FAIXAS).filter((local) => !doTurno.some((t) => typeof t[`${prefixo[local]}Atual`] === 'number'));
     if (faltam.length) {
-      avisos.append(html(`<a class="alerta atencao" href="#/m/temperatura/novo?local=${encodeURIComponent(faltam[0])}">${icone('temperature')}<span>Temperatura do turno da ${turno.toLowerCase()} ainda não registrada: ${esc(faltam.join(' e ').toLowerCase())}.</span>${icone('chevron-right')}</a>`));
+      avisos.append(html(`<a class="alerta atencao" href="#/m/temperatura/novo">${icone('temperature')}<span>Temperatura do turno da ${turno.toLowerCase()} ainda não registrada: ${esc(faltam.join(' e ').toLowerCase())}.</span>${icone('chevron-right')}</a>`));
     }
   }
   if (afericoesHoje) {
@@ -199,7 +191,7 @@ export async function paginaInicio(main) {
   }
   metricas.innerHTML = cards.join('');
 
-  await montarAgenda(pagina.querySelector('[data-agenda]'), { agendadas, notasRec, atendAbertos, trocasPend });
+  await montarAgenda(pagina.querySelector('[data-agenda]'), { agendadas, notasRec, atendAbertos, trocasPend, rotinasAtivas });
 
   const recentes = [
     ...(afericoesHoje || []).map((d) => ({ s: schemaPorId('afericoes'), d })),

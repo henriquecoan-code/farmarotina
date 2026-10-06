@@ -5,7 +5,7 @@ import { esc, html, fmtDataHora, agoraLocal } from './util.js';
 
 function colunas(schema) {
   return [
-    ...schema.campos.map((c) => ({ rot: c.rot, val: (d) => fmtValor(c, d) })),
+    ...schema.campos.filter((c) => c.tipo !== 'secao').map((c) => ({ rot: c.rotLongo || c.rot, val: (d) => fmtValor(c, d) })),
     { rot: 'Registrado por', val: (d) => d.criadoPorNome || '' },
     { rot: 'Registrado em', val: (d) => fmtDataHora(d.criadoLocal) },
   ];

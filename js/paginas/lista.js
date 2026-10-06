@@ -17,6 +17,12 @@ export function botaoAcaoRapida(schema, d, comTexto = false) {
   return `<button type="button" class="btn ${comTexto ? '' : 'pequeno'} acao-rapida" data-acao-rapida data-schema="${schema.id}" data-id="${esc(d.id)}" title="${esc(acao.rot)}">${icone(acao.icone)} ${esc(acao.rot)}</button>`;
 }
 
+// Linhas de tabela clicáveis (ex.: mini tabela de temperatura)
+document.addEventListener('click', (e) => {
+  const tr = e.target.closest('tr[data-href]');
+  if (tr && !e.target.closest('a, button')) location.hash = tr.dataset.href;
+});
+
 // Clique em qualquer botão de ação rápida (lista, histórico, página do registro): grava e recarrega a tela
 document.addEventListener('click', async (e) => {
   const b = e.target.closest('[data-acao-rapida]');
@@ -25,7 +31,8 @@ document.addEventListener('click', async (e) => {
   const schema = schemaPorId(b.dataset.schema);
   b.disabled = true;
   try {
-    await db.atualizar(schema.id, b.dataset.id, schema.acaoRapida.dados());
+    const doc = await db.obter(schema.id, b.dataset.id);
+    await db.atualizar(schema.id, b.dataset.id, schema.acaoRapida.dados(doc));
     toast(schema.acaoRapida.msg, 'ok');
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   } catch (err) {
@@ -99,14 +106,16 @@ export async function paginaLista(main, schema) {
     const lista = filtrados();
     const periodo = f.de || f.ate ? ` · ${f.de ? 'de ' + fmtData(f.de) : ''} ${f.ate ? 'até ' + fmtData(f.ate) : ''}` : '';
     info.textContent = `${lista.length} registro(s)${periodo}${!f.de && !f.ate && docs.length >= 300 ? ' · mostrando os 300 mais recentes' : ''}`;
+    listaEl.classList.toggle('lista-propria', !!(schema.renderLista && lista.length));
     listaEl.innerHTML = lista.length
-      ? lista.map((d) => linhaRegistro(schema, d)).join('')
+      ? (schema.renderLista ? schema.renderLista(lista) : lista.map((d) => linhaRegistro(schema, d)).join(''))
       : `<div class="vazio">${docs.length ? 'Nada encontrado com esses filtros.' : 'Nenhum registro ainda.'}</div>`;
   }
 
   async function carregar() {
     try {
       docs = await db.listar(schema.id, { ordem: schema.ordem, desc: schema.desc, de: f.de, ate: f.ate });
+      if (schema.normalizar) docs = docs.map(schema.normalizar);
       desenhar();
     } catch (e) {
       console.error(e);

@@ -12,6 +12,7 @@ export async function paginaEditar(main, schema, id, query) {
   let dados = {};
   if (id) {
     dados = await db.obter(schema.id, id);
+    if (dados && schema.normalizar) dados = schema.normalizar(dados);
     if (!dados) {
       main.innerHTML = `<div class="pagina"><div class="vazio">Registro não encontrado.</div></div>`;
       return;

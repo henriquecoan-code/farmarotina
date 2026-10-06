@@ -8,6 +8,7 @@ export const MODULOS = [
   { id: 'notas', nome: 'Anotações' },
   { id: 'fornecedores', nome: 'Fornecedores' },
   { id: 'pops', nome: 'POPs (leitura)' },
+  { id: 'rotinas', nome: 'Rotinas (mensais, semanais…)' },
 ];
 
 export const PERFIS = {

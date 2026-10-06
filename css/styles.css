@@ -483,3 +483,38 @@ input[type=checkbox], input[type=radio] { width: auto; min-height: 0; accent-col
   .linha-com-acao { flex-wrap: wrap; }
   .linha-com-acao .acao-rapida { margin: 0 14px 10px auto; }
 }
+
+/* ---------- seção dentro do formulário ---------- */
+.secao-form {
+  grid-column: 1 / -1; display: flex; align-items: center; gap: 6px; margin-top: 6px; padding-top: 12px;
+  border-top: 1px solid var(--borda); font-weight: 600; color: var(--pri-escuro);
+}
+.grade > .secao-form:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+
+/* ---------- temperatura: mini tabela por dia ---------- */
+.lista.lista-propria { background: none; border: 0; border-radius: 0; gap: 12px; }
+.temp-dia { background: var(--superficie); border: 1px solid var(--borda); border-radius: 14px; overflow: hidden; }
+.temp-dia-titulo { padding: 10px 14px; border-bottom: 1px solid var(--borda); display: flex; gap: 8px; align-items: baseline; }
+.mini-tabela { width: 100%; border-collapse: collapse; font-size: 14px; font-variant-numeric: tabular-nums; }
+.mini-tabela th { text-align: left; font-size: 12px; font-weight: 500; color: var(--mudo); padding: 6px 14px; background: var(--superficie-2); }
+.mini-tabela th small { display: block; font-weight: 400; }
+.mini-tabela td { padding: 8px 14px; border-top: 1px solid var(--borda); vertical-align: top; }
+.mini-tabela td small { display: block; font-size: 12px; color: var(--mudo); }
+.mini-tabela td a { font-weight: 600; text-decoration: none; }
+.mini-tabela tr[data-href] { cursor: pointer; }
+.mini-tabela tr[data-href]:hover td { background: var(--superficie-2); }
+.mini-tabela td.fora { background: var(--perigo-bg); color: var(--perigo); }
+.mini-tabela td.fora small { color: var(--perigo); }
+.mini-tabela tr.com-alerta td:first-child { box-shadow: inset 3px 0 0 var(--perigo-borda); }
+.mini-tabela .vazio-cel { color: var(--mudo); }
+@media (max-width: 520px) {
+  .mini-tabela th, .mini-tabela td { padding: 7px 8px; }
+  .mini-tabela { font-size: 13px; }
+}
+
+/* ---------- botões de ação rápida e histórico ---------- */
+.acao-rapida { color: var(--ok); border-color: var(--ok); }
+.acao-rapida:hover { background: var(--ok-bg); }
+.historico-simples { list-style: none; margin: 0; padding: 0; }
+.historico-simples li { display: flex; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--borda); font-size: 14px; }
+.historico-simples li:first-child { border-top: 0; }
