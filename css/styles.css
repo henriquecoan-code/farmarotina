@@ -518,3 +518,32 @@ input[type=checkbox], input[type=radio] { width: auto; min-height: 0; accent-col
 .historico-simples { list-style: none; margin: 0; padding: 0; }
 .historico-simples li { display: flex; gap: 10px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--borda); font-size: 14px; }
 .historico-simples li:first-child { border-top: 0; }
+
+/* ---------- menu personalizável ---------- */
+.lateral-topo { display: flex; align-items: center; justify-content: space-between; gap: 4px; }
+.lateral-topo .marca { padding-right: 0; }
+.lateral-topo [data-organizar] { border: 0; color: var(--mudo); width: 34px; min-height: 34px; }
+.lateral-topo [data-organizar]:hover { color: var(--pri); }
+.organizando [data-organizar] { visibility: hidden; }
+.organizar-topo { display: flex; flex-direction: column; gap: 6px; padding: 8px; margin-bottom: 6px; border-radius: 8px; background: var(--pri-claro); color: var(--pri-escuro); font-size: 13px; }
+.organizar-lista { display: flex; flex-direction: column; gap: 2px; }
+.nav-edit { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 8px; color: var(--texto-2); font-weight: 500; background: var(--superficie); }
+.nav-edit-nome { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav-edit.fixo { opacity: .6; }
+.nav-edit.escondido .nav-edit-nome, .nav-edit.escondido > .ti { opacity: .4; text-decoration: line-through; }
+.nav-edit .olho { width: 30px; min-height: 30px; border: 0; color: var(--mudo); }
+.alca, .alca-vazia { width: 20px; display: inline-flex; justify-content: center; color: var(--mudo); flex-shrink: 0; }
+.alca { cursor: grab; touch-action: none; }
+.arrastando { box-shadow: 0 6px 18px rgba(0, 0, 0, .18); outline: 2px solid var(--pri); position: relative; z-index: 2; cursor: grabbing; }
+.config-lista { display: flex; flex-direction: column; border: 1px solid var(--borda); border-radius: var(--raio); overflow: hidden; margin: 8px 0; }
+.config-item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; background: var(--superficie); border-top: 1px solid var(--borda); }
+.config-item:first-child { border-top: 0; }
+.config-item .check { flex: 1; align-items: center; padding: 6px 0; }
+.config-item .check input { margin-top: 0; }
+.config-item .check span { display: inline-flex; align-items: center; gap: 6px; }
+.config-setas { display: flex; gap: 2px; }
+.config-setas .btn { width: 34px; min-height: 34px; border: 0; }
+.config-barra { margin-top: 8px; }
+.config-atalhos { margin-top: 8px; }
+.config-atalhos .chip span { display: inline-flex; align-items: center; gap: 4px; }
+@media (max-width: 860px) { .so-desktop { display: none !important; } }

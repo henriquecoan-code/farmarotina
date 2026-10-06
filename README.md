@@ -72,6 +72,16 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
 - **Offline:** o que for registrado sem internet sincroniza quando a conexão volta.
 - **Tema claro e escuro**, com layout próprio para celular (barra de atalhos embaixo) e para computador (menu lateral).
 
+### Configurações (cada usuário a sua)
+- **Menu lateral do jeito de cada um:**
+  - No computador, o botão de ajustes **Organizar o menu** (ao lado do nome do app) permite arrastar os itens e esconder com o olho.
+  - No celular, use **Configurações**, com arrastar ou setas ↑↓.
+  - Esconder um item só tira do menu; o acesso continua.
+- **Barra de atalhos do celular:** escolha os 3 botões de baixo.
+- **Atalhos da tela inicial:** escolha quais botões de "Novo…" aparecem.
+- **Restaurar padrão** desfaz tudo.
+- As preferências ficam salvas na conta da pessoa (vale no celular e no computador). Módulos liberados depois aparecem sozinhos no fim do menu.
+
 ### Usuários e permissões
 - **Novos cadastros** chegam como pendentes. O admin libera o acesso e marca os módulos de cada pessoa, com os atalhos de perfil *Farmacêutico* e *Atendente*.
 - **Administrador** tem acesso a todos os módulos, inclusive os criados depois, sem precisar marcar nada.
@@ -160,6 +170,7 @@ Depois de cada push, o site atualiza em 1 ou 2 minutos. O app confere se há ver
 | POPs | todos com o módulo leem; só o admin cria e edita |
 | Excluir qualquer registro ou anexo | só o admin |
 | Usuários | só o admin |
+| Configurações (preferências do próprio menu) | cada usuário ativo, só as suas |
 
 Os perfis "Farmacêutico" e "Atendente" na tela de Usuários são só atalhos que marcam os módulos. Ajuste como preferir. Usuários antigos não ganham módulos novos automaticamente: marque-os na tela de Usuários.
 
@@ -239,3 +250,4 @@ Opções que um módulo pode usar (veja os exemplos em `js/modulos/`):
 - **Agendadas:** o botão Registrar dá baixa na aplicação direto, sem abrir o formulário.
 - **Novo módulo Rotinas**, com botão Feito, histórico e as rotinas na Agenda.
 - **Anotações:** botão Resolvido também na lista de anotações.
+- **Configurações:** menu lateral personalizável por usuário (arrastar no computador; tela de Configurações no celular), barra do celular e atalhos da tela inicial.

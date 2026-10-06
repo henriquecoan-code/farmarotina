@@ -8,27 +8,16 @@ import { paginaLista } from './paginas/lista.js';
 import { paginaDetalhe } from './paginas/detalhe.js';
 import { paginaEditar } from './paginas/editar.js';
 import { paginaUsuarios } from './paginas/usuarios.js';
+import { paginaConfiguracoes } from './paginas/configuracoes.js';
+import { itensMenu, itensVisiveisNoMenu, itensBarraCelular, aplicarOrdem, prefs, salvarPreferencias, arrastavel } from './preferencias.js';
 import { $, $$, esc, html, icone, toast, mensagemErro } from './util.js';
 
 const raiz = document.getElementById('app');
 let perfil = null;
 
-// Atalhos da barra inferior no celular, na ordem de preferência
-const PREFERIDOS_CELULAR = ['afericoes', 'temperatura', 'atendimentos', 'clientes', 'notas'];
+const itemLink = (l) => `<a href="${l.href}" data-rota="${l.rota}">${icone(l.icone)}<span>${esc(l.nome)}</span></a>`;
 
 function montarShell() {
-  const schemas = visiveis().filter((s) => s.menu !== false);
-  const links = [
-    { href: '#/', icone: 'home', nome: 'Início', rota: '' },
-    ...schemas.map((s) => ({ href: `#/m/${s.id}`, icone: s.icone, nome: s.nome, rota: s.id })),
-    ...(ehAdmin() ? [{ href: '#/usuarios', icone: 'shield-lock', nome: 'Usuários', rota: 'usuarios' }] : []),
-  ];
-  const inferiores = [
-    links[0],
-    ...PREFERIDOS_CELULAR.map((id) => links.find((l) => l.rota === id)).filter(Boolean).slice(0, 3),
-  ];
-  const item = (l) => `<a href="${l.href}" data-rota="${l.rota}">${icone(l.icone)}<span>${esc(l.nome)}</span></a>`;
-
   raiz.innerHTML = '';
   raiz.append(html(`<div class="shell">
     <header class="topo-celular">
@@ -37,9 +26,12 @@ function montarShell() {
       <span class="status-rede" hidden>${icone('wifi-off')}</span>
     </header>
     <nav class="lateral" aria-label="Menu principal">
-      <div class="marca">${icone('first-aid-kit')} ${esc(NOME_APP)}</div>
+      <div class="lateral-topo">
+        <div class="marca">${icone('first-aid-kit')} ${esc(NOME_APP)}</div>
+        <button type="button" class="btn icone so-desktop" data-organizar title="Organizar o menu" aria-label="Organizar o menu">${icone('adjustments-horizontal')}</button>
+      </div>
       ${DEMO ? '<div class="selo-texto info demo">Modo demonstração</div>' : ''}
-      <div class="nav-links">${links.map(item).join('')}</div>
+      <div class="nav-links"></div>
       <div class="nav-rodape">
         <div class="usuario-atual"><b>${esc(perfil.nome || '')}</b><span class="mudo">${ehAdmin() ? 'Administrador' : esc(perfil.email || '')}</span></div>
         ${DEMO ? `<button type="button" class="btn pequeno" data-reiniciar>${icone('refresh')} Reiniciar dados de exemplo</button>` : ''}
@@ -48,17 +40,17 @@ function montarShell() {
     </nav>
     <div class="fundo-menu" data-fechar-menu></div>
     <main id="conteudo" tabindex="-1"></main>
-    <nav class="barra-inferior" aria-label="Atalhos">
-      ${inferiores.map(item).join('')}
-      <button type="button" data-abrir-menu>${icone('dots')}<span>Mais</span></button>
-    </nav>
+    <nav class="barra-inferior" aria-label="Atalhos"></nav>
   </div>`));
 
   const shell = $('.shell', raiz);
   const fecharMenu = () => shell.classList.remove('menu-aberto');
-  $$('[data-abrir-menu]', shell).forEach((b) => { b.onclick = () => shell.classList.add('menu-aberto'); });
-  $('[data-fechar-menu]', shell).onclick = fecharMenu;
-  $$('.nav-links a', shell).forEach((a) => a.addEventListener('click', fecharMenu));
+  // Delegação: o menu e a barra são redesenhados quando as preferências mudam
+  shell.addEventListener('click', (e) => {
+    if (e.target.closest('[data-abrir-menu]')) shell.classList.add('menu-aberto');
+    else if (e.target.closest('[data-fechar-menu], .nav-links a')) fecharMenu();
+  });
+  $('[data-organizar]', shell).onclick = () => organizarMenu(shell);
   $('[data-sair]', shell).onclick = () => db.sair();
   const reiniciar = $('[data-reiniciar]', shell);
   if (reiniciar) reiniciar.onclick = () => {
@@ -73,6 +65,65 @@ function montarShell() {
   window.addEventListener('online', atualizarRede);
   window.addEventListener('offline', atualizarRede);
   atualizarRede();
+  atualizarMenu();
+}
+
+// Desenha o menu lateral e a barra do celular conforme as preferências do usuário
+function atualizarMenu() {
+  const shell = $('.shell', raiz);
+  if (!shell) return;
+  shell.classList.remove('organizando');
+  $('.nav-links', shell).innerHTML = itensVisiveisNoMenu().map(itemLink).join('');
+  const inicio = itensMenu()[0];
+  $('.barra-inferior', shell).innerHTML = [inicio, ...itensBarraCelular()].map(itemLink).join('')
+    + `<button type="button" data-abrir-menu>${icone('dots')}<span>Mais</span></button>`;
+  marcarAtivo();
+}
+
+function marcarAtivo() {
+  const [p0, p1] = lerRota().partes;
+  const ativa = p0 === 'm' ? p1 : p0 || '';
+  $$('[data-rota]').forEach((a) => a.classList.toggle('ativo', a.dataset.rota === ativa));
+}
+
+// Modo "Organizar" (computador): arrastar os itens do menu e mostrar/esconder com o olho
+function organizarMenu(shell) {
+  shell.classList.add('organizando');
+  const p = prefs();
+  const ocultos = new Set(p.menuOcultos || []);
+  const nav = $('.nav-links', shell);
+  const itens = aplicarOrdem();
+  nav.innerHTML = `<div class="organizar-topo">
+      <span>Arraste para reordenar</span>
+      <div class="botoes"><button type="button" class="btn pequeno" data-cancelar>Cancelar</button>
+      <button type="button" class="btn pequeno pri" data-concluir>${icone('check')} Concluir</button></div>
+    </div>
+    <div class="organizar-lista">${itens.map((i) => `<div class="nav-edit ${i.fixo ? 'fixo' : ''} ${ocultos.has(i.id) ? 'escondido' : ''}" data-id="${esc(i.id)}">
+      ${i.fixo ? `<span class="alca-vazia"></span>` : `<span class="alca" title="Arrastar">${icone('grip-vertical')}</span>`}
+      ${icone(i.icone)}<span class="nav-edit-nome">${esc(i.nome)}</span>
+      ${i.fixo ? '' : `<button type="button" class="btn icone olho" data-olho title="Mostrar ou esconder" aria-label="Mostrar ou esconder ${esc(i.nome)}">${icone(ocultos.has(i.id) ? 'eye-off' : 'eye')}</button>`}
+    </div>`).join('')}</div>`;
+
+  const lista = $('.organizar-lista', nav);
+  arrastavel(lista, { item: '.nav-edit:not(.fixo)', alca: '.alca' });
+  lista.addEventListener('click', (e) => {
+    const olho = e.target.closest('[data-olho]');
+    if (!olho) return;
+    const linha = olho.closest('.nav-edit');
+    linha.classList.toggle('escondido');
+    olho.innerHTML = icone(linha.classList.contains('escondido') ? 'eye-off' : 'eye');
+  });
+  $('[data-cancelar]', nav).onclick = atualizarMenu;
+  $('[data-concluir]', nav).onclick = async () => {
+    const linhas = $$('.nav-edit:not(.fixo)', lista);
+    try {
+      await salvarPreferencias({
+        menuOrdem: linhas.map((l) => l.dataset.id),
+        menuOcultos: linhas.filter((l) => l.classList.contains('escondido')).map((l) => l.dataset.id),
+      });
+      toast('Menu organizado', 'ok');
+    } catch (err) { toast(mensagemErro(err), 'erro'); }
+  };
 }
 
 function lerRota() {
@@ -87,13 +138,13 @@ async function rotear() {
   const { partes, query } = lerRota();
   const [p0, p1, p2, p3] = partes;
 
-  const ativa = p0 === 'm' ? p1 : p0 || '';
-  $$('[data-rota]').forEach((a) => a.classList.toggle('ativo', a.dataset.rota === ativa));
+  marcarAtivo();
   window.scrollTo(0, 0);
 
   try {
     if (!p0) return await paginaInicio(main);
     if (p0 === 'usuarios') return await paginaUsuarios(main);
+    if (p0 === 'configuracoes') return await paginaConfiguracoes(main);
     if (p0 === 'm') {
       const schema = schemaPorId(p1);
       if (!schema || !visiveis().includes(schema)) {
@@ -113,6 +164,7 @@ async function rotear() {
 }
 
 window.addEventListener('hashchange', rotear);
+window.addEventListener('preferencias', atualizarMenu);
 window.addEventListener('erro-sync', (e) => toast(`Não foi possível sincronizar: ${mensagemErro(e.detail)}`, 'erro'));
 
 db.observarAuth(async (u) => {

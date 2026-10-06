@@ -34,7 +34,10 @@ service cloud.firestore {
       // A própria pessoa cria (ou corrige enquanto pendente) o seu perfil, sem poder se dar permissões.
       allow create: if logado() && request.auth.uid == uid && perfilPendenteValido();
       allow update: if admin()
-                    || (logado() && request.auth.uid == uid && resource.data.ativo == false && perfilPendenteValido());
+                    || (logado() && request.auth.uid == uid && resource.data.ativo == false && perfilPendenteValido())
+                    // Cada pessoa ativa pode mudar só as próprias preferências (ordem do menu, atalhos)
+                    || (logado() && request.auth.uid == uid && resource.data.ativo == true
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['preferencias']));
       allow delete: if admin();
     }
 
