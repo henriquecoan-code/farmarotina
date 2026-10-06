@@ -6,7 +6,7 @@ import { ocorrencia } from './modulos/rotinas.js';
 
 const CHAVE = 'farmarotina-demo-v7';
 const SESSAO = 'farmarotina-demo-sessao';
-const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'trocas', 'pops', 'rotinas'];
+const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'trocas', 'pops', 'rotinas', 'pedido', 'historico'];
 
 export const USUARIOS_DEMO = {
   'admin@demo': { nome: 'Ana (admin)', papel: 'admin', modulos: [], ativo: true },
@@ -169,6 +169,15 @@ export async function atualizar(col, id, dados) {
   Object.assign(colecao(col)[id], dados, carimbo(false));
   salvar();
   return { status: 'ok' };
+}
+export async function definir(col, id, dados) {
+  colecao(col)[id] = { ...dados, ...carimbo(true) };
+  salvar();
+  return { id, status: 'ok' };
+}
+export async function apagar(col, id) {
+  delete colecao(col)[id];
+  salvar();
 }
 export async function excluir(col, id) {
   delete colecao(col)[id];

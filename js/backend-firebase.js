@@ -105,6 +105,14 @@ export async function atualizar(col, id, dados) {
   return { status };
 }
 
+// Grava (ou substitui por inteiro) um registro com id escolhido, ex.: regra por EAN, vendas de um mês
+export async function definir(col, id, dados) {
+  const status = await comPrazo(setDoc(doc(db, col, id), { ...dados, ...carimbo(true) }));
+  return { id, status };
+}
+
+export const apagar = (col, id) => deleteDoc(doc(db, col, id));
+
 export async function excluir(col, id) {
   const anexos = await getDocs(collection(db, col, id, 'anexos'));
   await Promise.all(anexos.docs.map((a) => deleteDoc(a.ref)));

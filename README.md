@@ -72,6 +72,21 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
 - **Offline:** o que for registrado sem internet sincroniza quando a conexão volta.
 - **Tema claro e escuro**, com layout próprio para celular (barra de atalhos embaixo) e para computador (menu lateral).
 
+### Compras (páginas separadas, na pasta `compras/`)
+Usam o mesmo login do FarmaRotina e aparecem no menu lateral para quem tem o módulo liberado.
+- **Pedido de compras** (`compras/pedido.html`), vindo do antigo "Revisão de Pedido" em Python:
+  - carrega o relatório **Sugestão de Compras** do Trier (.xls) direto no navegador;
+  - calcula a sugestão pelas regras gerais (mínimo por curva A/B/C e Fat de encartelado) e aplica as exceções por marca e por produto ("Lembrar");
+  - exporta o `pedido_site.csv` (`EAN;quantidade`);
+  - a revisão em andamento fica guardada no aparelho até ser descartada;
+  - as regras ficam no Firebase, compartilhadas por toda a equipe.
+- **Histórico de vendas** (`compras/historico.html`):
+  - importa o relatório **Totais por Produto** do Trier (.xlsx, .xls ou .csv), um mês por vez;
+  - mostra receita, custo, margem, gráficos por mês, grupo e laboratório, e o top 20 de produtos, com filtros;
+  - cada mês fica salvo como um documento no Firebase;
+  - a linha "Total Geral:" do relatório é descartada (no sistema antigo ela entrava como produto e dobrava os totais).
+- **Dados do sistema antigo:** o arquivo `historico_migracao.json` (gerado do banco antigo, **fora** deste repositório) é importado uma vez em *Histórico de vendas → Importar mês → Trazer dados do sistema antigo*.
+
 ### Configurações (cada usuário a sua)
 - **Menu lateral do jeito de cada um:**
   - No computador, o botão de ajustes **Organizar o menu** (ao lado do nome do app) permite arrastar os itens e esconder com o olho.
@@ -168,6 +183,7 @@ Depois de cada push, o site atualiza em 1 ou 2 minutos. O app confere se há ver
 | Temperatura, Atendimento, Anotações, Fornecedores | quem tem o módulo |
 | Trocas e Farmácias parceiras | quem tem *trocas* |
 | Rotinas | quem tem *rotinas* (não vem no perfil Atendente) |
+| Pedido de compras, Histórico de vendas | quem tem o módulo (vêm no perfil Farmacêutico, não no Atendente) |
 | POPs | todos com o módulo leem; só o admin cria e edita |
 | Excluir qualquer registro ou anexo | só o admin |
 | Usuários | só o admin |
@@ -252,3 +268,4 @@ Opções que um módulo pode usar (veja os exemplos em `js/modulos/`):
 - **Novo módulo Rotinas**, com botão Feito, histórico e as rotinas na Agenda.
 - **Anotações:** botão Resolvido também na lista de anotações.
 - **Configurações:** menu lateral personalizável por usuário (arrastar no computador; tela de Configurações no celular), barra do celular e atalhos da tela inicial.
+- **Compras:** Pedido de compras e Histórico de vendas, trazidos do sistema em Python para páginas do site (sem servidor), com os dados no Firebase.

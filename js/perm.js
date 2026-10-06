@@ -9,6 +9,8 @@ export const MODULOS = [
   { id: 'fornecedores', nome: 'Fornecedores' },
   { id: 'pops', nome: 'POPs (leitura)' },
   { id: 'rotinas', nome: 'Rotinas (mensais, semanais…)' },
+  { id: 'pedido', nome: 'Pedido de compras' },
+  { id: 'historico', nome: 'Histórico de vendas' },
 ];
 
 export const PERFIS = {

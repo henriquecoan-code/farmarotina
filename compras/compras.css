@@ -1,0 +1,93 @@
+/* Páginas de compras (Pedido e Histórico de vendas). Usa as cores e componentes de ../css/styles.css */
+
+.compras-topo {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  padding: 8px 20px; padding-top: max(8px, env(safe-area-inset-top));
+  background: var(--superficie); border-bottom: 1px solid var(--borda);
+}
+.compras-topo .marca { padding: 0; text-decoration: none; }
+.compras-nav { display: flex; gap: 4px; flex: 1; }
+.compras-nav a {
+  display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px;
+  color: var(--texto-2); text-decoration: none; font-weight: 500; font-size: 14px;
+}
+.compras-nav a:hover { background: var(--superficie-2); }
+.compras-nav a.ativo { background: var(--pri-claro); color: var(--pri-escuro); }
+.compras-usuario { font-size: 13px; }
+.compras-main { padding: 20px 24px 48px; }
+.pagina.larga { max-width: 1400px; }
+
+.tabela-rolagem { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+.metrica.destaque { border-color: var(--pri); background: var(--pri-claro); }
+.metrica.destaque .metrica-valor { color: var(--pri-escuro); }
+.metrica-valor.positivo, td.positivo { color: var(--ok); }
+.metrica-valor.negativo, td.negativo { color: var(--perigo); }
+
+/* ---------- Pedido ---------- */
+.tabela-pedido {
+  width: 100%; border-collapse: collapse; font-size: 14px; background: var(--superficie);
+  border: 1px solid var(--borda); border-radius: 12px; font-variant-numeric: tabular-nums;
+}
+.tabela-pedido th {
+  position: sticky; top: 0; text-align: left; font-size: 12px; font-weight: 500; color: var(--mudo);
+  padding: 8px 10px; background: var(--superficie-2); white-space: nowrap;
+}
+.tabela-pedido td { padding: 8px 10px; border-top: 1px solid var(--borda); vertical-align: top; }
+.tabela-pedido tr.excluido td { background: var(--superficie-2); color: var(--mudo); }
+.tabela-pedido tr.excluido .nome-produto { text-decoration: line-through; }
+.tabela-pedido .col-check { width: 44px; text-align: center; }
+.tabela-pedido .col-check input { width: 18px; height: 18px; }
+.nome-produto { font-weight: 500; min-width: 180px; }
+.linha-ean { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--mudo); margin-top: 2px; }
+.btn-copiar {
+  display: inline-flex; align-items: center; gap: 2px; font: inherit; font-size: 11px; cursor: pointer;
+  padding: 1px 6px; border-radius: 6px; border: 1px solid var(--borda-forte); background: var(--superficie); color: var(--texto-2);
+}
+.btn-copiar:hover { border-color: var(--pri); color: var(--pri); }
+.curva { display: inline-block; min-width: 24px; text-align: center; font-weight: 700; font-size: 12px; padding: 2px 6px; border-radius: 6px; background: var(--superficie-2); }
+.curva-A { background: var(--ok-bg); color: var(--ok); }
+.curva-B { background: var(--info-bg); color: var(--info); }
+.curva-C { background: var(--atencao-bg); color: var(--atencao); }
+.curva-D { background: var(--perigo-bg); color: var(--perigo); }
+.tabela-pedido .qtd { width: 76px; min-height: 34px; padding: 4px 8px; }
+.tabela-pedido .obs { min-height: 32px; padding: 4px 8px; font-size: 13px; margin-top: 4px; min-width: 200px; }
+.motivo { font-size: 12px; color: var(--texto-2); max-width: 340px; }
+.tabela-pedido td.vazio { text-align: center; }
+
+.regras-pedido { display: flex; flex-direction: column; gap: 20px; }
+.regras-pedido h3 { font-size: 15px; margin: 0 0 4px; }
+.regras-pedido section { display: flex; flex-direction: column; gap: 8px; }
+.linha-form { display: flex; gap: 8px; flex-wrap: wrap; }
+.linha-form input { flex: 1 1 160px; width: auto; }
+.tabela-simples { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tabela-simples th { text-align: left; font-weight: 500; color: var(--mudo); padding: 6px 8px; border-bottom: 1px solid var(--borda); white-space: nowrap; }
+.tabela-simples td { padding: 6px 8px; border-bottom: 1px solid var(--borda); vertical-align: top; }
+.tabela-simples .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.tabela-simples td.vazio { text-align: center; }
+
+/* ---------- Histórico ---------- */
+.historico { display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 16px; align-items: start; }
+.historico-conteudo { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.filtros-historico { position: sticky; top: 72px; display: flex; flex-direction: column; gap: 16px; max-height: calc(100vh - 90px); overflow-y: auto; }
+.filtro-bloco h3 { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; color: var(--mudo); margin: 0 0 6px; }
+.filtro-bloco .check { padding: 3px 0; align-items: center; }
+.filtro-bloco .check input { margin-top: 0; }
+.filtro-bloco .check span { flex: 1; }
+.lista-labs { max-height: 220px; overflow-y: auto; margin-top: 6px; padding-right: 4px; }
+.link-apagar { background: none; border: 0; color: var(--mudo); cursor: pointer; padding: 2px; }
+.link-apagar:hover { color: var(--perigo); }
+.historico h2 { margin-bottom: 10px; }
+.grafico { position: relative; height: 280px; }
+.grafico.alto { height: 260px; }
+.lado-a-lado { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.importar-backup { margin-top: 14px; font-size: 14px; }
+.importar-backup summary { cursor: pointer; color: var(--texto-2); }
+.importar-backup input { margin-top: 8px; }
+
+@media (max-width: 860px) {
+  .compras-topo { padding: 8px 12px; gap: 8px; }
+  .compras-nav { order: 3; flex-basis: 100%; overflow-x: auto; }
+  .compras-main { padding: 14px 12px 40px; }
+  .historico { grid-template-columns: 1fr; }
+  .filtros-historico { position: static; max-height: none; }
+}
