@@ -548,3 +548,32 @@ input[type=checkbox], input[type=radio] { width: auto; min-height: 0; accent-col
 .config-atalhos .chip span { display: inline-flex; align-items: center; gap: 4px; }
 @media (max-width: 860px) { .so-desktop { display: none !important; } }
 .config-subtitulo { margin-top: 14px; }
+
+/* ---------- trocas: pendentes por farmácia ---------- */
+.painel-topo { display: flex; flex-direction: column; gap: 10px; }
+.painel-topo [data-painel] { display: flex; flex-direction: column; gap: 12px; }
+.troca-parceiro { background: var(--superficie); border: 1px solid var(--borda); border-radius: 14px; overflow: hidden; }
+.troca-parceiro-topo { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 14px; border-bottom: 1px solid var(--borda); }
+.troca-parceiro-topo b { font-size: 16px; }
+.troca-par { display: grid; grid-template-columns: 1fr 1fr; }
+.troca-par + .troca-par { border-top: 2px solid var(--borda-forte); }
+.troca-col { padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.troca-col + .troca-col { border-left: 1px solid var(--borda); }
+.troca-col:only-child { grid-column: 1 / -1; }
+.troca-col-titulo { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .02em; color: var(--c, var(--mudo)); }
+.troca-item {
+  display: flex; flex-direction: column; gap: 2px; align-items: flex-start; padding: 8px 10px; border-radius: 10px;
+  background: var(--c-bg, var(--superficie-2)); border-left: 3px solid var(--c, var(--borda-forte));
+}
+.troca-item a { color: var(--texto); text-decoration: none; font-size: 14px; }
+.troca-item small { color: var(--mudo); font-size: 12px; display: flex; align-items: center; gap: 4px; }
+.troca-item.perigo { border-left-color: var(--perigo-borda); }
+.troca-item.perigo small { color: var(--perigo); font-weight: 600; }
+.troca-item.atencao small { color: var(--atencao); font-weight: 600; }
+.troca-item .acao-rapida { margin-top: 4px; background: var(--superficie); }
+.troca-vazia { color: var(--mudo); padding: 4px 2px; }
+@media (max-width: 520px) {
+  .troca-col { padding: 8px; }
+  .troca-item { padding: 6px 8px; }
+  .troca-item .acao-rapida { width: 100%; }
+}

@@ -75,6 +75,11 @@ export async function paginaLista(main, schema) {
       <div class="agenda-lista"><div class="vazio">${icone('loader-2 girar')} Carregando…</div></div>
     </section>
     <h2 class="subtitulo">${icone('history')} Aplicações realizadas</h2>` : ''}
+    ${schema.painel ? `<section class="painel-topo">
+      <h2>${icone(schema.painel.icone)} ${esc(schema.painel.titulo)} <span class="mudo" data-painel-total></span></h2>
+      <div data-painel><div class="vazio">${icone('loader-2 girar')} Carregando…</div></div>
+    </section>
+    <h2 class="subtitulo">${icone('history')} ${esc(schema.painel.depois)}</h2>` : ''}
     <div class="filtros">
       <div class="busca">${icone('search')}<input type="search" placeholder="Buscar" value="${esc(f.busca)}" data-f="busca"></div>
       ${porData ? `<label class="filtro-data">De <input type="date" value="${f.de}" data-f="de"></label>
@@ -135,7 +140,20 @@ export async function paginaLista(main, schema) {
   $('[data-imprimir]', main).onclick = () =>
     imprimir(schema, filtrados(), [f.de && `de ${fmtData(f.de)}`, f.ate && `até ${fmtData(f.ate)}`].filter(Boolean).join(' '));
 
-  await Promise.all([carregar(), schema.agenda ? carregarAgenda(main, schema) : null]);
+  await Promise.all([carregar(), schema.agenda ? carregarAgenda(main, schema) : null, schema.painel ? carregarPainel(main, schema) : null]);
+}
+
+// Painel opcional acima dos registros (ex.: trocas pendentes por farmácia)
+async function carregarPainel(main, schema) {
+  const el = $('[data-painel]', main);
+  try {
+    const docs = await db.listar(schema.id, { ordem: schema.ordem, desc: schema.desc, ...schema.painel.consulta });
+    $('[data-painel-total]', main).textContent = docs.length ? `(${docs.length})` : '';
+    el.innerHTML = docs.length ? schema.painel.render(docs) : `<div class="vazio cartao">${esc(schema.painel.vazio)}</div>`;
+  } catch (e) {
+    console.error(e);
+    el.innerHTML = `<div class="vazio">${esc(mensagemErro(e))}</div>`;
+  }
 }
 
 async function carregarAgenda(main, schema) {

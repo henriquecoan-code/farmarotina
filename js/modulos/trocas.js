@@ -1,6 +1,7 @@
 // Trocas com outras farmácias: empréstimos (pega hoje, devolve depois) e repasses de produtos perto do vencimento.
 import * as config from '../config.js';
-import { agoraLocal, fmtData, fmtDataHora, fmtNum, hoje } from '../util.js';
+import { podeEditar } from '../perm.js';
+import { agoraLocal, esc, icone, normalizar, fmtData, fmtDataHora, fmtNum, hoje } from '../util.js';
 
 export const TIPOS_TROCA = ['Peguei emprestado', 'Emprestei', 'Repassei (vencimento próximo)', 'Recebi (vencimento próximo)'];
 // Cor e ícone de cada tipo, usados nos botões de "nova troca" e nas etiquetas da lista
@@ -55,10 +56,62 @@ export function mensagemTroca(d) {
   }
 }
 
+// ---------- painel "Pendentes por farmácia" (acima dos registros) ----------
+// Para cada farmácia parceira: Peguei emprestado | Emprestei, uma divisória, e Repassei | Recebi.
+// Ao concluir a troca ela sai do painel.
+const PARES = [['Peguei emprestado', 'Emprestei'], ['Repassei (vencimento próximo)', 'Recebi (vencimento próximo)']];
+
+function itemPainel(d) {
+  const a = alerta(d);
+  const datas = [fmtData(d.dataHora).slice(0, 5), d.prazo && `prazo ${fmtData(d.prazo).slice(0, 5)}`].filter(Boolean).join(' · ');
+  return `<div class="troca-item ${a ? a.nivel : ''}">
+    <a href="#/m/trocas/${esc(d.id)}">${esc(qtd(d))}<b>${esc(d.produto || 'produto')}</b></a>
+    <small>${esc(datas)}${a ? ` ${icone(a.nivel === 'perigo' ? 'alert-triangle' : 'alert-circle')}` : ''}</small>
+    ${podeEditar(trocas) ? `<button type="button" class="btn pequeno acao-rapida" data-acao-rapida data-schema="trocas" data-id="${esc(d.id)}">${icone('check')} Concluir</button>` : ''}
+  </div>`;
+}
+
+function colunaPainel(tipo, itens) {
+  const e = ESTILO_TIPO[tipo];
+  return `<div class="troca-col cor-${e.cor}">
+    <div class="troca-col-titulo">${icone(e.icone)} ${esc(tipo.replace(' (vencimento próximo)', ''))}</div>
+    ${itens.length ? itens.map(itemPainel).join('') : '<div class="troca-vazia">—</div>'}
+  </div>`;
+}
+
+function renderPainel(docs) {
+  const porFarmacia = new Map();
+  for (const d of docs) {
+    const nome = nomeParceiro(d) || 'Sem farmácia';
+    const chave = d.parceiroId || normalizar(nome);
+    if (!porFarmacia.has(chave)) porFarmacia.set(chave, { nome, itens: [] });
+    porFarmacia.get(chave).itens.push(d);
+  }
+  const ordem = (a, b) => String(a.prazo || '9999').localeCompare(String(b.prazo || '9999'));
+  return [...porFarmacia.values()].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')).map((f) => {
+    const doTipo = (t) => f.itens.filter((d) => d.tipo === t).sort(ordem);
+    const semTipo = f.itens.filter((d) => !ESTILO_TIPO[d.tipo]);
+    const atrasadas = f.itens.filter((d) => alerta(d)?.nivel === 'perigo').length;
+    const pares = PARES.filter((par) => par.some((t) => doTipo(t).length))
+      .map((par) => `<div class="troca-par">${par.map((t) => colunaPainel(t, doTipo(t))).join('')}</div>`);
+    if (semTipo.length) pares.push(`<div class="troca-par"><div class="troca-col"><div class="troca-col-titulo">Sem tipo</div>${semTipo.map(itemPainel).join('')}</div></div>`);
+    return `<section class="troca-parceiro">
+      <div class="troca-parceiro-topo">${icone('building-store')} <b>${esc(f.nome)}</b>
+        <span class="mudo">${f.itens.length} pendente(s)</span>
+        ${atrasadas ? `<span class="selo-texto perigo">${atrasadas} com prazo vencido</span>` : ''}</div>
+      ${pares.join('')}
+    </section>`;
+  }).join('');
+}
+
 export const trocas = {
   id: 'trocas', modulo: 'trocas', nome: 'Trocas', novo: 'Nova troca', icone: 'arrows-exchange',
   ordem: 'dataHora', desc: true,
   links: [{ href: '#/m/parceiros', icone: 'building-store', rot: 'Farmácias parceiras' }],
+  painel: {
+    titulo: 'Pendentes por farmácia', icone: 'arrows-exchange', depois: 'Todos os registros',
+    consulta: { onde: ['situacao', 'Pendente'] }, render: renderPainel, vazio: 'Nenhuma troca pendente.',
+  },
   // Um botão por tipo: a troca já abre com o tipo escolhido
   novos: TIPOS_TROCA.map((t) => ({ rot: t.replace('(vencimento próximo)', '(vencendo)'), query: { tipo: t }, ...ESTILO_TIPO[t] })),
   campos: [

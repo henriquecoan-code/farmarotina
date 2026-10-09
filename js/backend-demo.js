@@ -4,7 +4,7 @@ import { agoraLocal, diasAtras, hoje } from './util.js';
 import { calcularProxima } from './modulos/saude.js';
 import { ocorrencia } from './modulos/rotinas.js';
 
-const CHAVE = 'farmarotina-demo-v7';
+const CHAVE = 'farmarotina-demo-v8';
 const SESSAO = 'farmarotina-demo-sessao';
 const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'trocas', 'pops', 'rotinas', 'pedido', 'historico'];
 
@@ -75,6 +75,7 @@ function semente() {
   add('trocas', { dataHora: h(0, '15:40'), situacao: 'Pendente', tipo: 'Peguei emprestado', parceiroId: central, parceiroNome: 'Drogaria Central', contato: 'Fernanda', telefone: '(11) 95555-2020', produto: 'Amoxicilina 500 mg cx 21 cáps', quantidade: 2, prazo: diasAtras(-1), acerto: 'Devolver o mesmo produto' });
   add('trocas', { dataHora: h(2, '10:10'), situacao: 'Pendente', tipo: 'Emprestei', parceiroId: popular, parceiroNome: 'Farmácia Popular do Bairro', contato: 'Marcos', telefone: '(11) 94444-3030', produto: 'Insulina NPH 10 mL', quantidade: 1, prazo: diasAtras(1), acerto: 'Devolver o mesmo produto' });
   add('trocas', { dataHora: h(5, '17:00'), situacao: 'Concluída', tipo: 'Repassei (vencimento próximo)', parceiroId: central, parceiroNome: 'Drogaria Central', contato: 'Fernanda', produto: 'Protetor solar FPS 50', quantidade: 6, validade: diasAtras(-40), acerto: 'Pagamento' });
+  add('trocas', { dataHora: h(1, '11:30'), situacao: 'Pendente', tipo: 'Recebi (vencimento próximo)', parceiroId: central, parceiroNome: 'Drogaria Central', contato: 'Fernanda', produto: 'Vitamina C 1g efervescente', quantidade: 10, validade: diasAtras(-25), acerto: 'Pagamento', prazo: diasAtras(-5) });
   add('atendimentos', { dataHora: h(2, '17:45'), status: 'Resolvido', tipo: 'Dúvida', clienteNome: 'Cliente de passagem', descricao: 'Interação entre ibuprofeno e losartana.', solucao: 'Orientado a preferir paracetamol e falar com o médico.' });
 
   const inicioMes = `${hoje().slice(0, 8)}01`;
