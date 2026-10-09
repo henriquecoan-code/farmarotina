@@ -164,7 +164,9 @@ function controle(campo, valor, dados, aoEscolher) {
         const el = html(`<div class="seg" role="radiogroup">${campo.opcoes.map((o) => `<label><input type="radio" name="${nomeGrupo}" value="${esc(o)}" ${o === valor ? 'checked' : ''}><span>${esc(o)}</span></label>`).join('')}</div>`);
         return { el, get: () => $('input:checked', el)?.value ?? null };
       }
-      const el = html(`<select name="${k}"><option value="">Selecione…</option>${campo.opcoes.map((o) => `<option ${o === valor ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`);
+      // Registro antigo com uma opção que não existe mais: mantém o valor na lista para não se perder ao salvar
+      const opcoes = valor && !campo.opcoes.includes(valor) ? [...campo.opcoes, valor] : campo.opcoes;
+      const el = html(`<select name="${k}"><option value="">Selecione…</option>${opcoes.map((o) => `<option ${o === valor ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`);
       return { el, get: () => el.value || null };
     }
     case 'ref':

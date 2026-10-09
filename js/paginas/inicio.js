@@ -31,10 +31,11 @@ async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, trocasPe
   for (const d of agendadas || []) {
     itens.push({ data: d.proxima, html: cartaoAgenda('injetaveis', d, tels.get(d.clienteId), 'Aplicação') });
   }
-  const sNotas = schemaPorId('notas');
+  // Lembretes dos dois cadernos de anotações (clientes e controle); cada registro sabe de qual veio
   for (const n of (notasRec || []).filter((x) => x.lembrete && !x.resolvido)) {
+    const sNotas = schemaPorId(n._col);
     itens.push({ data: n.lembrete, html: cartaoPrazo({
-      data: n.lembrete, etiqueta: 'Anotação', genero: 'o', titulo: n.titulo, sub: resumo(n.texto), href: `#/m/notas/${n.id}`,
+      data: n.lembrete, etiqueta: sNotas.etiquetaAgenda, genero: 'o', titulo: n.titulo, sub: resumo(n.texto), href: `#/m/${n._col}/${n.id}`,
       acoes: botaoAcaoRapida(sNotas, n, true),
     }) });
   }
@@ -118,7 +119,8 @@ export async function paginaInicio(main) {
     podeVer('temperatura') ? seguro(db.listar('temperatura', { limite: 30 })) : null,
     podeVer('saude') ? seguro(db.listar('afericoes', { de: dia, ate: dia })) : null,
     podeVer('atendimento') ? seguro(db.listar('atendimentos', { onde: ['status', 'Aberto'] })) : null,
-    podeVer('notas') ? seguro(db.listar('notas', { limite: 200 })) : null,
+    podeVer('notas') ? seguro(Promise.all(['notas', 'controle'].map((col) => db.listar(col, { limite: 200 })
+      .then((docs) => docs.map((d) => ({ ...d, _col: col }))).catch(() => []))).then((l) => l.flat())) : null,
     podeVer('saude') ? seguro(db.listar('injetaveis', { limite: 10 })) : null,
     podeVer('saude') ? seguro(listarAgendadas('injetaveis')) : null,
     podeVer('trocas') ? seguro(db.listar('trocas', { onde: ['situacao', 'Pendente'] })) : null,
@@ -187,7 +189,8 @@ export async function paginaInicio(main) {
     const lembretes = notasRec.filter((n) => s.alerta(n));
     cards.push(cartaoNumero({
       rotulo: 'Lembretes', valor: lembretes.length,
-      selo: lembretes.length ? 'Para hoje ou atrasados' : 'Nada pendente', nivel: lembretes.length ? 'atencao' : 'ok', href: '#/m/notas',
+      selo: lembretes.length ? 'Para hoje ou atrasados' : 'Nada pendente', nivel: lembretes.length ? 'atencao' : 'ok',
+      href: lembretes.length && lembretes.every((n) => n._col === 'controle') ? '#/m/controle' : '#/m/notas',
     }));
   }
   metricas.innerHTML = cards.join('');

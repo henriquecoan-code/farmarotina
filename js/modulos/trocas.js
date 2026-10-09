@@ -57,17 +57,19 @@ export function mensagemTroca(d) {
 }
 
 // ---------- painel "Pendentes por farmácia" (acima dos registros) ----------
-// Para cada farmácia parceira: Peguei emprestado | Emprestei, uma divisória, e Repassei | Recebi.
+// Para cada farmácia parceira: Emprestei | Peguei emprestado, uma divisória, e Repassei | Recebi.
 // Ao concluir a troca ela sai do painel.
-const PARES = [['Peguei emprestado', 'Emprestei'], ['Repassei (vencimento próximo)', 'Recebi (vencimento próximo)']];
+const PARES = [['Emprestei', 'Peguei emprestado'], ['Repassei (vencimento próximo)', 'Recebi (vencimento próximo)']];
 
 function itemPainel(d) {
   const a = alerta(d);
-  const datas = [fmtData(d.dataHora).slice(0, 5), d.prazo && `prazo ${fmtData(d.prazo).slice(0, 5)}`].filter(Boolean).join(' · ');
+  const datas = [fmtData(d.dataHora).slice(0, 5), d.prazo && `até ${fmtData(d.prazo).slice(0, 5)}`].filter(Boolean).join(" · ");
   return `<div class="troca-item ${a ? a.nivel : ''}">
-    <a href="#/m/trocas/${esc(d.id)}">${esc(qtd(d))}<b>${esc(d.produto || 'produto')}</b></a>
-    <small>${esc(datas)}${a ? ` ${icone(a.nivel === 'perigo' ? 'alert-triangle' : 'alert-circle')}` : ''}</small>
-    ${podeEditar(trocas) ? `<button type="button" class="btn pequeno acao-rapida" data-acao-rapida data-schema="trocas" data-id="${esc(d.id)}">${icone('check')} Concluir</button>` : ''}
+    <div class="troca-item-texto">
+      <a href="#/m/trocas/${esc(d.id)}">${esc(qtd(d))}<b>${esc(d.produto || 'produto')}</b></a>
+      <small>${esc(datas)}${a ? ` ${icone(a.nivel === 'perigo' ? 'alert-triangle' : 'alert-circle')}` : ''}</small>
+    </div>
+    ${podeEditar(trocas) ? `<button type="button" class="btn pequeno acao-rapida" data-acao-rapida data-schema="trocas" data-id="${esc(d.id)}" title="Concluir" aria-label="Concluir">${icone('check')}<span class="rotulo-concluir">Concluir</span></button>` : ''}
   </div>`;
 }
 

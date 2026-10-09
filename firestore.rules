@@ -152,6 +152,20 @@ service cloud.firestore {
       }
     }
 
+    // Anotações de controle: mesmo acesso das anotações de clientes (permissão "notas")
+    match /controle/{id} {
+      allow read: if pode('notas');
+      allow create: if pode('notas') && criacaoValida();
+      allow update: if pode('notas') && (edicaoValida() || soContador());
+      allow delete: if admin();
+      match /anexos/{aid} {
+        allow read: if pode('notas');
+        allow create: if pode('notas') && criacaoValida();
+        allow update: if pode('notas') && edicaoValida();
+        allow delete: if admin();
+      }
+    }
+
     match /notas/{id} {
       allow read: if pode('notas');
       allow create: if pode('notas') && criacaoValida();

@@ -46,7 +46,7 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
 - **Quatro botões coloridos**, um para cada tipo: 🔵 *Peguei emprestado*, 🟠 *Emprestei*, 🟣 *Repassei (vencendo)* e 🟢 *Recebi (vencendo)*. A troca abre com o tipo já escolhido, e a lista mostra uma etiqueta da mesma cor.
 - **Campos:** só a farmácia e o produto são obrigatórios. Há também contato, telefone, quantidade, lote, validade, prazo e forma de acerto.
 - **Empréstimo:** o prazo de devolução vem preenchido para o dia seguinte.
-- **Pendentes por farmácia** no topo da tela de Trocas: um quadro por farmácia parceira, com *Peguei emprestado | Emprestei*, uma divisória e *Repassei | Recebi*. Ao concluir, a troca sai do quadro.
+- **Pendentes por farmácia** no topo da tela de Trocas: um quadro por farmácia parceira, com *Emprestei | Peguei emprestado*, uma divisória e *Repassei | Recebi*. Ao concluir, a troca sai do quadro.
 - **Botão Concluir** em cada troca pendente (na lista, na página da troca e na Agenda), que registra a data e a hora da conclusão.
 - **WhatsApp para a farmácia parceira**, com mensagem pronta conforme o tipo da troca.
 - **Farmácias parceiras** (botão dentro de Trocas):
@@ -58,7 +58,7 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
 ### Cadastros e rotinas
 - **Clientes:** cadastro com consentimento LGPD e histórico completo (aferições, aplicações e atendimentos).
 - **Atendimento:** dúvidas, encomendas e reclamações, com data de retorno e aviso pelo WhatsApp.
-- **Anotações gerais:** categoria e **lembrete com data**, que aparece na Agenda até ser marcado como resolvido.
+- **Anotações de clientes** (Recados, Atendimento, Encomenda, Lembretes) e **Anotações de controle** (Estoque, Financeiro, Equipe, Compras, Manutenção, Documentos): mesmo funcionamento, com categoria e **lembrete com data**, que aparece na Agenda até ser marcado como resolvido. As duas usam a permissão *Anotações*.
 - **Fornecedores:** **horário limite para envio do pedido** (a lista mostra "Pedido até 14:00" ou "Encerrado") e prazo padrão de entrega.
 - **POPs:** todos com acesso leem; só o administrador edita.
 - **Rotinas:** tarefas que se repetem, como "todo começo de mês enviar o relatório CST e exportar o XML para a contabilidade" ou "atualizar estoque mínimo e demanda por curva ABC".

@@ -5,7 +5,7 @@ export const MODULOS = [
   { id: 'temperatura', nome: 'Temperatura' },
   { id: 'atendimento', nome: 'Atendimento' },
   { id: 'trocas', nome: 'Trocas entre farmácias' },
-  { id: 'notas', nome: 'Anotações' },
+  { id: 'notas', nome: 'Anotações (clientes e controle)' },
   { id: 'fornecedores', nome: 'Fornecedores' },
   { id: 'pops', nome: 'POPs (leitura)' },
   { id: 'rotinas', nome: 'Rotinas (mensais, semanais…)' },

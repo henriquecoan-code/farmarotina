@@ -36,32 +36,48 @@ export const atendimentos = {
     ? { nivel: 'atencao', msg: `Retorno atrasado (era até ${fmtData(v.retorno)}).` } : null),
 };
 
-export const notas = {
-  id: 'notas', modulo: 'notas', nome: 'Anotações', novo: 'Nova anotação', icone: 'notes',
-  ordem: 'dataHora', desc: true,
-  campos: [
-    { k: 'titulo', rot: 'Título', tipo: 'texto', obrig: true },
-    { k: 'dataHora', rot: 'Data e hora', tipo: 'datahora', obrig: true, lg: 'm' },
-    { k: 'categoria', rot: 'Categoria', tipo: 'opcoes', opcoes: ['Geral', 'Estoque', 'Equipe', 'Clientes', 'Fornecedores', 'Financeiro', 'Outro'], padrao: 'Geral', lg: 'm' },
-    { k: 'texto', rot: 'Anotação', tipo: 'textarea', linhas: 6, obrig: true },
-    { k: 'lembrete', rot: 'Lembrar em', tipo: 'data', lg: 'm', ajuda: 'Opcional' },
-    { k: 'resolvido', rot: 'Resolvido', tipo: 'simnao', lg: 'm', se: (v) => !!v.lembrete },
-  ],
-  titulo: (d) => d.titulo,
-  sub: (d) => `${d.categoria || 'Geral'} · ${fmtDataHora(d.dataHora)} · ${String(d.texto || '').slice(0, 60)}`,
-  valor: (d) => (d.lembrete && !d.resolvido ? `lembrar ${fmtData(d.lembrete)}` : ''),
-  alerta: (v) => {
-    if (!v.lembrete || v.resolvido) return null;
-    if (v.lembrete < hoje()) return { nivel: 'atencao', msg: `Lembrete atrasado (era ${fmtData(v.lembrete)}).` };
-    if (v.lembrete === hoje()) return { nivel: 'atencao', msg: 'Lembrete para hoje.' };
-    return null;
-  },
-  acaoRapida: {
-    rot: 'Resolvido', icone: 'check', msg: 'Lembrete marcado como resolvido',
-    quando: (d) => !!d.lembrete && !d.resolvido,
-    dados: () => ({ resolvido: true }),
-  },
-};
+// Anotações: o mesmo módulo serve para dois cadernos (clientes e controle interno), cada um com suas
+// categorias e sua coleção. Os dois usam a permissão "notas".
+function criarAnotacoes({ id, nome, novo, icone, categorias, etiquetaAgenda }) {
+  return {
+    id, modulo: 'notas', nome, novo, icone,
+    ordem: 'dataHora', desc: true,
+    etiquetaAgenda,
+    campos: [
+      { k: 'titulo', rot: 'Título', tipo: 'texto', obrig: true },
+      { k: 'dataHora', rot: 'Data e hora', tipo: 'datahora', obrig: true, lg: 'm' },
+      { k: 'categoria', rot: 'Categoria', tipo: 'opcoes', opcoes: categorias, lista: true, padrao: categorias[0], lg: 'm' },
+      { k: 'texto', rot: 'Anotação', tipo: 'textarea', linhas: 6, obrig: true },
+      { k: 'lembrete', rot: 'Lembrar em', tipo: 'data', lg: 'm', ajuda: 'Opcional' },
+      { k: 'resolvido', rot: 'Resolvido', tipo: 'simnao', lg: 'm', se: (v) => !!v.lembrete },
+    ],
+    titulo: (d) => d.titulo,
+    sub: (d) => [d.categoria, fmtDataHora(d.dataHora), String(d.texto || '').slice(0, 60)].filter(Boolean).join(' · '),
+    valor: (d) => (d.lembrete && !d.resolvido ? `lembrar ${fmtData(d.lembrete)}` : ''),
+    alerta: (v) => {
+      if (!v.lembrete || v.resolvido) return null;
+      if (v.lembrete < hoje()) return { nivel: 'atencao', msg: `Lembrete atrasado (era ${fmtData(v.lembrete)}).` };
+      if (v.lembrete === hoje()) return { nivel: 'atencao', msg: 'Lembrete para hoje.' };
+      return null;
+    },
+    acaoRapida: {
+      rot: 'Resolvido', icone: 'check', msg: 'Lembrete marcado como resolvido',
+      quando: (d) => !!d.lembrete && !d.resolvido,
+      dados: () => ({ resolvido: true }),
+    },
+  };
+}
+
+// A coleção "notas" continua sendo a das anotações de clientes (os registros antigos ficam aqui)
+export const notas = criarAnotacoes({
+  id: 'notas', nome: 'Anotações de clientes', novo: 'Nova anotação de cliente', icone: 'notes',
+  categorias: ['Recados', 'Atendimento', 'Encomenda', 'Lembretes'], etiquetaAgenda: 'Anotação',
+});
+
+export const controle = criarAnotacoes({
+  id: 'controle', nome: 'Anotações de controle', novo: 'Nova anotação de controle', icone: 'clipboard-list',
+  categorias: ['Estoque', 'Financeiro', 'Equipe', 'Compras', 'Manutenção', 'Documentos'], etiquetaAgenda: 'Controle',
+});
 
 // "14:00" → minutos desde 00:00, para comparar com a hora atual
 const minutos = (hhmm) => { const [h, m] = String(hhmm).split(':').map(Number); return h * 60 + m; };

@@ -4,7 +4,7 @@ import { agoraLocal, diasAtras, hoje } from './util.js';
 import { calcularProxima } from './modulos/saude.js';
 import { ocorrencia } from './modulos/rotinas.js';
 
-const CHAVE = 'farmarotina-demo-v8';
+const CHAVE = 'farmarotina-demo-v9';
 const SESSAO = 'farmarotina-demo-sessao';
 const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'trocas', 'pops', 'rotinas', 'pedido', 'historico'];
 
@@ -66,8 +66,9 @@ function semente() {
 
   add('fornecedores', { nome: 'Distribuidora Saúde Ltda.', cnpj: '12.345.678/0001-90', contato: 'Roberto', telefone: '(11) 3333-4444', email: 'vendas@exemplo.com.br', horarioLimite: '14:00', prazo: '24 h', produtos: 'Medicamentos, perfumaria' });
   add('fornecedores', { nome: 'Genéricos Brasil Distribuidora', contato: 'Patrícia', telefone: '(11) 4002-1000', horarioLimite: '17:30', prazo: '2 dias úteis', produtos: 'Genéricos e similares', obs: 'Pedido mínimo de R$ 500.' });
-  add('notas', { titulo: 'Dipirona em falta na NF 48213', dataHora: h(0, '09:00'), categoria: 'Estoque', texto: 'Faltaram 2 caixas de dipirona 500 mg. O Roberto (Distribuidora Saúde) vai repor na terça.', lembrete: hoje() });
-  add('notas', { titulo: 'Reunião de equipe', dataHora: h(3, '18:10'), categoria: 'Equipe', texto: 'Revisar escala de dezembro e o POP de temperatura com todos.' });
+  add('controle', { titulo: 'Dipirona em falta na NF 48213', dataHora: h(0, '09:00'), categoria: 'Estoque', texto: 'Faltaram 2 caixas de dipirona 500 mg. O Roberto (Distribuidora Saúde) vai repor na terça.', lembrete: hoje() });
+  add('notas', { titulo: 'Dona Maria pediu retorno sobre a Losartana', dataHora: h(0, '10:40'), categoria: 'Recados', texto: 'Ligar quando chegar o genérico de 50 mg. Prefere WhatsApp.', lembrete: diasAtras(-1) });
+  add('controle', { titulo: 'Reunião de equipe', dataHora: h(3, '18:10'), categoria: 'Equipe', texto: 'Revisar escala de dezembro e o POP de temperatura com todos.' });
 
   add('atendimentos', { dataHora: h(0, '11:00'), status: 'Aberto', clienteId: maria, clienteNome: 'Maria Souza', tipo: 'Encomenda', descricao: 'Losartana 50 mg genérico, 3 caixas.', retorno: hoje() });
   const central = add('parceiros', { nome: 'Drogaria Central', contato: 'Fernanda', telefone: '(11) 95555-2020', endereco: 'Rua das Flores, 120' });
