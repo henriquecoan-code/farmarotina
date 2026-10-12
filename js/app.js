@@ -1,6 +1,6 @@
 import { db } from './db.js';
 import { DEMO, NOME_APP } from './config.js';
-import { definirPerfil, ehAdmin, podeEditar, podeVer } from './perm.js';
+import { definirPerfil, ehAdmin, podeEditar } from './perm.js';
 import { schemaPorId, visiveis } from './modulos/index.js';
 import { paginaLogin, paginaPendente } from './paginas/login.js';
 import { paginaInicio } from './paginas/inicio.js';
@@ -9,7 +9,6 @@ import { paginaDetalhe } from './paginas/detalhe.js';
 import { paginaEditar } from './paginas/editar.js';
 import { paginaUsuarios } from './paginas/usuarios.js';
 import { paginaConfiguracoes } from './paginas/configuracoes.js';
-import { paginaCrediario } from './paginas/crediario.js';
 import { itensMenu, itensVisiveisNoMenu, itensBarraCelular, aplicarOrdem, prefs, salvarPreferencias, arrastavel } from './preferencias.js';
 import { $, $$, esc, html, icone, toast, mensagemErro } from './util.js';
 
@@ -146,13 +145,6 @@ async function rotear() {
     if (!p0) return await paginaInicio(main);
     if (p0 === 'usuarios') return await paginaUsuarios(main);
     if (p0 === 'configuracoes') return await paginaConfiguracoes(main);
-    if (p0 === 'crediario') {
-      if (!podeVer('crediario')) {
-        main.innerHTML = `<div class="pagina"><div class="vazio">Você não tem acesso a esse módulo.</div></div>`;
-        return;
-      }
-      return await paginaCrediario(main, query);
-    }
     if (p0 === 'm') {
       const schema = schemaPorId(p1);
       if (!schema || !visiveis().includes(schema)) {

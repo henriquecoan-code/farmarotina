@@ -1,58 +1,18 @@
 // Parte comum das páginas de compras (Pedido e Histórico de vendas):
 // usa o mesmo login e as mesmas permissões do FarmaRotina.
 import { db } from '../../js/db.js';
-import { DEMO, NOME_APP } from '../../js/config.js';
-import { definirPerfil, podeVer } from '../../js/perm.js';
-import { esc, html, icone, mensagemErro } from '../../js/util.js';
+import { iniciarSubsite } from '../../js/subsite.js';
 
 export { db };
 
 const PAGINAS = [
-  { id: 'pedido', href: 'pedido.html', icone: 'shopping-cart', nome: 'Pedido' },
-  { id: 'historico', href: 'historico.html', icone: 'chart-line', nome: 'Histórico de vendas' },
+  { id: 'pedido', modulo: 'pedido', href: 'pedido.html', icone: 'shopping-cart', nome: 'Pedido' },
+  { id: 'historico', modulo: 'historico', href: 'historico.html', icone: 'chart-line', nome: 'Histórico de vendas' },
 ];
-
-function aviso(raiz, msg, comLink = true) {
-  raiz.innerHTML = '';
-  raiz.append(html(`<div class="tela-entrada"><div class="cartao entrada">
-    <div class="marca grande">${icone('first-aid-kit')} ${esc(NOME_APP)}</div>
-    <p>${esc(msg)}</p>
-    ${comLink ? `<a class="btn pri" href="../index.html">${icone('login')} Ir para o ${esc(NOME_APP)}</a>` : ''}
-  </div></div>`));
-}
-
-function topo(atual, perfil) {
-  return html(`<header class="compras-topo">
-    <a class="marca" href="../index.html" title="Voltar ao ${esc(NOME_APP)}">${icone('first-aid-kit')} ${esc(NOME_APP)}</a>
-    <nav class="compras-nav">${PAGINAS.filter((p) => podeVer(p.id)).map((p) => `<a href="${p.href}" class="${p.id === atual ? 'ativo' : ''}">${icone(p.icone)}<span>${esc(p.nome)}</span></a>`).join('')}</nav>
-    <span class="compras-usuario mudo">${DEMO ? '<span class="selo-texto info">Demonstração</span> ' : ''}${esc(perfil.nome || '')}</span>
-  </header>`);
-}
 
 // Confere login e permissão do módulo; se estiver tudo certo, desenha o topo e chama montar(main, perfil).
 export function iniciar({ modulo, titulo, montar }) {
-  const raiz = document.getElementById('app');
-  db.observarAuth(async (u) => {
-    if (!u) return aviso(raiz, `Entre no ${NOME_APP} para usar o ${titulo}.`);
-    db.definirUsuario(u);
-    try {
-      const p = await db.obterPerfil(u.uid);
-      definirPerfil(p);
-      if (!p?.ativo) return aviso(raiz, 'Seu acesso ainda não foi liberado pelo administrador.');
-      if (!podeVer(modulo)) {
-        return aviso(raiz, `Você não tem acesso ao ${titulo}. Peça ao administrador para liberar o módulo na tela Usuários do ${NOME_APP}.`);
-      }
-      db.definirUsuario({ uid: u.uid, nome: p.nome || u.nome });
-      raiz.innerHTML = '';
-      raiz.append(topo(modulo, p));
-      const main = html('<main class="compras-main"></main>');
-      raiz.append(main);
-      await montar(main, p);
-    } catch (e) {
-      console.error(e);
-      aviso(raiz, mensagemErro(e), false);
-    }
-  });
+  iniciarSubsite({ paginas: PAGINAS, atual: modulo, modulos: [modulo], titulo: `o ${titulo}`, montar });
 }
 
 // ---------- utilidades de planilha ----------

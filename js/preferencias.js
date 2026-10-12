@@ -1,6 +1,6 @@
 // Preferências de cada usuário (ordem do menu, itens escondidos, atalhos), salvas em usuarios/{uid}.preferencias.
 import { db } from './db.js';
-import { ehAdmin, podeEditar, podeVer, obterPerfilAtual } from './perm.js';
+import { MODULOS, ehAdmin, podeEditar, podeVer, obterPerfilAtual } from './perm.js';
 import { visiveis } from './modulos/index.js';
 
 // Padrões de quem ainda não personalizou
@@ -8,7 +8,9 @@ const PADRAO_CELULAR = ['afericoes', 'temperatura', 'atendimentos', 'clientes', 
 const FORA_DOS_ATALHOS = ['pops', 'rotinas'];
 
 const PAGINAS_EXTRAS = [
-  { id: 'crediario', rota: 'crediario', href: '#/crediario', icone: 'wallet', nome: 'Crediário' },
+  // Um item só para todas as consultas ao Trier: aparece para quem tem pelo menos uma delas
+  { id: 'consultas', rota: 'consultas', href: 'consultas/consulta.html', icone: 'database-search', nome: 'Consultas Trier',
+    modulos: MODULOS.filter((m) => m.grupo === 'consultas').map((m) => m.id) },
   { id: 'pedido', rota: 'pedido', href: 'compras/pedido.html', icone: 'shopping-cart', nome: 'Pedido de compras' },
   { id: 'historico', rota: 'historico', href: 'compras/historico.html', icone: 'chart-line', nome: 'Histórico de vendas' },
 ];
@@ -21,8 +23,8 @@ export function itensMenu() {
     { id: 'inicio', rota: '', href: '#/', icone: 'home', nome: 'Início', fixo: 'topo' },
     ...visiveis().filter((s) => s.menu !== false)
       .map((s) => ({ id: s.id, rota: s.id, href: `#/m/${s.id}`, icone: s.icone, nome: s.nome, schema: s })),
-    // Páginas fora dos módulos de registro (crediário e a pasta compras/)
-    ...PAGINAS_EXTRAS.filter((p) => podeVer(p.id)),
+    // Páginas separadas do site (pastas consultas/ e compras/), abertas a partir do menu
+    ...PAGINAS_EXTRAS.filter((p) => (p.modulos || [p.id]).some(podeVer)),
     { id: 'configuracoes', rota: 'configuracoes', href: '#/configuracoes', icone: 'settings', nome: 'Configurações', fixo: 'fim' },
     ...(ehAdmin() ? [{ id: 'usuarios', rota: 'usuarios', href: '#/usuarios', icone: 'shield-lock', nome: 'Usuários', fixo: 'fim' }] : []),
   ];

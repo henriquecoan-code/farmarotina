@@ -11,7 +11,8 @@ export const MODULOS = [
   { id: 'rotinas', nome: 'Rotinas (mensais, semanais…)' },
   { id: 'pedido', nome: 'Pedido de compras' },
   { id: 'historico', nome: 'Histórico de vendas' },
-  { id: 'crediario', nome: 'Crediário (consulta no Trier)' },
+  // Consultas ao sistema da farmácia (Trier), na página separada consultas/consulta.html
+  { id: 'crediario', nome: 'Crediário (consulta no Trier)', grupo: 'consultas' },
 ];
 
 export const PERFIS = {

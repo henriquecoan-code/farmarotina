@@ -1,5 +1,5 @@
 // Dados fictícios do crediário para o modo demonstração (sem ponte nem banco)
-import { diasAtras } from '../util.js';
+import { diasAtras } from '../../js/util.js';
 
 const CARENCIA = 10;
 const dia = (n) => diasAtras(n); // n > 0 = passado, n < 0 = futuro

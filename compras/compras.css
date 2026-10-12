@@ -1,20 +1,5 @@
 /* Páginas de compras (Pedido e Histórico de vendas). Usa as cores e componentes de ../css/styles.css */
 
-.compras-topo {
-  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
-  padding: 8px 20px; padding-top: max(8px, env(safe-area-inset-top));
-  background: var(--superficie); border-bottom: 1px solid var(--borda);
-}
-.compras-topo .marca { padding: 0; text-decoration: none; }
-.compras-nav { display: flex; gap: 4px; flex: 1; }
-.compras-nav a {
-  display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 8px;
-  color: var(--texto-2); text-decoration: none; font-weight: 500; font-size: 14px;
-}
-.compras-nav a:hover { background: var(--superficie-2); }
-.compras-nav a.ativo { background: var(--pri-claro); color: var(--pri-escuro); }
-.compras-usuario { font-size: 13px; }
-.compras-main { padding: 20px 24px 48px; }
 .pagina.larga { max-width: 1400px; }
 
 .tabela-rolagem { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
@@ -85,9 +70,6 @@
 .importar-backup input { margin-top: 8px; }
 
 @media (max-width: 860px) {
-  .compras-topo { padding: 8px 12px; gap: 8px; }
-  .compras-nav { order: 3; flex-basis: 100%; overflow-x: auto; }
-  .compras-main { padding: 14px 12px 40px; }
   .historico { grid-template-columns: 1fr; }
   .filtros-historico { position: static; max-height: none; }
 }

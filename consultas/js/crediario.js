@@ -1,10 +1,12 @@
 // Crediário: consulta ao banco do Trier pela ponte local (pasta ponte/), somente leitura.
 // Abas: Cliente (o que tem em aberto), Recebimentos (conferência do caixa) e Em atraso.
-import { db } from '../db.js';
-import { DEMO, PONTE_URL, NOME_FARMACIA } from '../config.js';
-import { linkWhatsapp } from '../agenda.js';
-import { $, $$, esc, html, icone, fmtData, fmtMoeda, hoje, normalizar } from '../util.js';
-import { demoCrediario } from './crediario-demo.js';
+// Navegação pelo endereço: crediario.html#cliente=123, #aba=recebimentos, #aba=atrasados
+import { NOME_FARMACIA } from '../../js/config.js';
+import { linkWhatsapp } from '../../js/agenda.js';
+import { $, $$, esc, html, icone, fmtData, fmtMoeda, hoje, normalizar } from '../../js/util.js';
+import { iniciar, api as apiPonte, telaErro } from './comum.js';
+
+const api = (caminho) => apiPonte(caminho, 'crediario');
 
 const ABAS = [
   { id: 'cliente', rot: 'Cliente', icone: 'user-search' },
@@ -12,22 +14,6 @@ const ABAS = [
   { id: 'atrasados', rot: 'Em atraso', icone: 'alert-triangle' },
 ];
 const estado = { busca: '', de: '', ate: '', diasAtraso: '1', filtroAtraso: '' }; // lembra os filtros enquanto o app está aberto
-
-class PonteDesligada extends Error {}
-
-async function api(caminho) {
-  if (DEMO) return demoCrediario(caminho);
-  const token = await db.tokenAcesso();
-  let r;
-  try {
-    r = await fetch(PONTE_URL + caminho, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
-  } catch {
-    throw new PonteDesligada();
-  }
-  const dados = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(dados.erro || `Erro ${r.status} na ponte do crediário.`);
-  return dados;
-}
 
 const moeda = (n) => fmtMoeda(n || 0);
 const soma = (l, f) => Math.round(l.reduce((s, x) => s + (typeof f === 'function' ? f(x) : x[f] || 0), 0) * 100) / 100;
@@ -41,20 +27,8 @@ function textoAtraso(dias) {
   return dias === -1 ? 'vence amanhã' : `vence em ${-dias} dias`;
 }
 
-function telaErro(e) {
-  if (e instanceof PonteDesligada) {
-    return `<div class="alerta atencao cred-ponte">${icone('plug-connected-x')}<span>
-      <b>O programa do crediário não está rodando neste computador.</b><br>
-      Esta tela lê o sistema da farmácia por um programa instalado no próprio computador (a "ponte").
-      Abra o atalho <b>Ponte do crediário</b> (ou o arquivo <code>ponte\\iniciar.bat</code>) e tente de novo.
-      Ela só funciona nos computadores da farmácia em que a ponte foi instalada.</span>
-      <button type="button" class="btn" data-recarregar>${icone('refresh')} Tentar de novo</button></div>`;
-  }
-  return `<div class="alerta perigo">${icone('alert-triangle')}<span>${esc(e.message)}</span>
-    <button type="button" class="btn" data-recarregar>${icone('refresh')} Tentar de novo</button></div>`;
-}
-
-export async function paginaCrediario(main, query) {
+async function paginaCrediario(main) {
+  const query = new URLSearchParams(location.hash.slice(1));
   const aba = ABAS.some((a) => a.id === query.get('aba')) ? query.get('aba') : 'cliente';
   const clienteId = query.get('cliente');
 
@@ -71,12 +45,9 @@ export async function paginaCrediario(main, query) {
 
   const corpo = $('.cred-corpo', main);
   $$('input[name="cred-aba"]', main).forEach((r) => {
-    r.onchange = () => { location.hash = r.value === 'cliente' ? '#/crediario' : `#/crediario?aba=${r.value}`; };
+    r.onchange = () => { location.hash = r.value === 'cliente' ? '' : `aba=${r.value}`; };
   });
   $('[data-imprimir]', main).onclick = () => window.print();
-  corpo.addEventListener('click', (e) => {
-    if (e.target.closest('[data-recarregar]')) window.dispatchEvent(new HashChangeEvent('hashchange'));
-  });
 
   try {
     if (aba === 'recebimentos') await abaRecebimentos(corpo);
@@ -91,7 +62,7 @@ export async function paginaCrediario(main, query) {
 
 // ---------- Cliente: busca ----------
 function linhaBusca(c) {
-  return `<a class="linha ${c.vencido > 0 ? 'com-alerta perigo' : ''}" href="#/crediario?cliente=${c.id}">
+  return `<a class="linha ${c.vencido > 0 ? 'com-alerta perigo' : ''}" href="#cliente=${c.id}">
     <div class="linha-texto"><div class="linha-titulo">${esc(c.nome)}
       ${c.bloqueado ? '<span class="selo-texto perigo">Bloqueado</span>' : ''}${!c.ativo ? ' <span class="selo-texto">Inativo</span>' : ''}</div>
       <div class="linha-sub">Cód. ${c.id}${c.cpf ? ` · ${esc(c.cpf)}` : ''}${c.telefone ? ` · ${esc(c.telefone)}` : ''}</div></div>
@@ -142,7 +113,7 @@ async function abaCliente(corpo, id) {
   const zap = linkWhatsapp(c.telefone, `Olá, ${primeiroNome(c.nome)}! Aqui é ${NOME_FARMACIA ? `da ${NOME_FARMACIA}` : 'da farmácia'}.`);
   const obs = [c.obs1, c.obs2].filter((o) => o && o.trim());
 
-  corpo.innerHTML = `<a class="voltar so-tela" href="#/crediario">${icone('arrow-left')} Buscar outro cliente</a>
+  corpo.innerHTML = `<a class="voltar so-tela" href="#">${icone('arrow-left')} Buscar outro cliente</a>
     <section class="cartao cred-cliente">
       <div class="cred-cliente-topo">
         <div><h2>${esc(c.nome)}</h2>
@@ -155,8 +126,8 @@ async function abaCliente(corpo, id) {
       <div class="metricas cred-metricas">
         <div class="metrica"><div class="metrica-rotulo">Em aberto</div><div class="metrica-valor">${moeda(soma(parcelas, 'valor'))}</div>
           <div class="mudo pequeno">${parcelas.length} parcela(s)</div></div>
-        <div class="metrica ${vencidas.length ? 'perigo' : ''}"><div class="metrica-rotulo">Vencido</div><div class="metrica-valor">${moeda(soma(vencidas, 'valor'))}</div>
-          <div class="mudo pequeno">${vencidas.length} parcela(s)</div></div>
+        <div class="metrica ${vencidas.length ? 'perigo' : ''}"><div class="metrica-rotulo">Total + juros</div><div class="metrica-valor">${moeda(soma(parcelas, total))}</div>
+          <div class="mudo pequeno">${vencidas.length ? `${vencidas.length} vencida(s): ${moeda(soma(vencidas, 'valor'))}` : 'para quitar hoje'}</div></div>
         <div class="metrica"><div class="metrica-rotulo">Juros e multa (estimado)</div><div class="metrica-valor">${moeda(soma(parcelas, (p) => (p.juros || 0) + (p.multa || 0)))}</div>
           <div class="mudo pequeno">${c.prcJuros ? `${String(c.prcJuros).replace('.', ',')}% ao dia após ${carencia} dias` : 'sem juros no cadastro'}</div></div>
         <div class="metrica"><div class="metrica-rotulo">Limite</div><div class="metrica-valor">${c.limite ? moeda(c.limite) : '—'}</div>
@@ -292,9 +263,9 @@ function desenharRecebimentos(lista, caixas) {
           <span class="cred-subtotal">${moeda(soma(ok, 'recebido'))}</span></div>
         <table class="mini-tabela">
           <thead><tr><th>Hora</th><th>Cliente</th><th class="num some-celular">Parcelas</th><th class="num some-celular">Valor</th><th class="num">Juros</th><th class="num">Recebido</th></tr></thead>
-          <tbody>${rs.map((r) => `<tr class="${r.cancelado ? 'cancelado' : ''}" data-href="#/crediario?cliente=${r.clienteId}">
+          <tbody>${rs.map((r) => `<tr class="${r.cancelado ? 'cancelado' : ''}" data-href="#cliente=${r.clienteId}">
             <td>${variosDias ? `${fmtData(r.data).slice(0, 5)} ` : ''}${hora(r.hora)}</td>
-            <td><a href="#/crediario?cliente=${r.clienteId}">${esc(r.cliente || `Cliente ${r.clienteId}`)}</a>
+            <td><a href="#cliente=${r.clienteId}">${esc(r.cliente || `Cliente ${r.clienteId}`)}</a>
               ${r.cancelado ? '<small class="cred-vencido">recebimento cancelado</small>' : ''}</td>
             <td class="num some-celular">${r.parcelas}</td>
             <td class="num some-celular">${moeda(r.original)}</td>
@@ -330,8 +301,8 @@ async function abaAtrasados(corpo) {
         <thead><tr><th>Cliente</th><th>Mais antiga</th><th class="num some-celular">Parcelas</th><th class="num">Vencido</th><th class="some-celular">Último pagto.</th><th class="so-tela"></th></tr></thead>
         <tbody>${vis.map((c) => {
           const zap = linkWhatsapp(c.telefone, `Olá, ${primeiroNome(c.nome)}! Aqui é ${farmacia}. Consta no seu crediário um valor em aberto desde ${fmtData(c.maisAntigo)}. Quando puder, passe na farmácia ou fale com a gente por aqui para combinarmos. Obrigado!`);
-          return `<tr data-href="#/crediario?cliente=${c.id}">
-            <td><a href="#/crediario?cliente=${c.id}">${esc(c.nome || `Cliente ${c.id}`)}</a>${c.bloqueado ? ' <span class="selo-texto perigo">Bloqueado</span>' : ''}<small>Cód. ${c.id}</small></td>
+          return `<tr data-href="#cliente=${c.id}">
+            <td><a href="#cliente=${c.id}">${esc(c.nome || `Cliente ${c.id}`)}</a>${c.bloqueado ? ' <span class="selo-texto perigo">Bloqueado</span>' : ''}<small>Cód. ${c.id}</small></td>
             <td>${fmtData(c.maisAntigo)}<small>${c.dias} dias</small></td>
             <td class="num some-celular">${c.parcelas}</td>
             <td class="num"><b>${moeda(c.vencido)}</b></td>
@@ -353,3 +324,13 @@ async function abaAtrasados(corpo) {
   $('[data-filtro]', corpo).oninput = (e) => { estado.filtroAtraso = e.target.value; desenhar(); };
   await carregar();
 }
+
+iniciar({
+  atual: 'crediario',
+  modulos: ['crediario'],
+  titulo: 'o Crediário',
+  montar: async (main) => {
+    window.addEventListener('hashchange', () => { window.scrollTo(0, 0); paginaCrediario(main); });
+    await paginaCrediario(main);
+  },
+});

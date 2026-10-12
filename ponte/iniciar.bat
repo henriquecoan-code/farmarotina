@@ -1,5 +1,5 @@
 @echo off
-title Ponte do crediario - FarmaRotina
+title Ponte do FarmaRotina (consultas ao Trier)
 cd /d "%~dp0"
 :inicio
 node servidor.js

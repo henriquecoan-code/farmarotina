@@ -127,7 +127,7 @@ const servidor = http.createServer(async (req, res) => {
 });
 
 servidor.listen(PORTA, '127.0.0.1', () => {
-  console.log(`Ponte do crediário v${VERSAO} rodando em http://127.0.0.1:${PORTA} (filial ${opcoes.filial}, config: ${CAMINHO_CONFIG})`);
+  console.log(`Ponte do FarmaRotina v${VERSAO} rodando em http://127.0.0.1:${PORTA} (filial ${opcoes.filial}, config: ${CAMINHO_CONFIG})`);
   console.log('Deixe esta janela aberta (pode minimizar).');
 });
 servidor.on('error', (e) => {

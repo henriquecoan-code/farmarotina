@@ -1,0 +1,48 @@
+/* Consultas ao sistema da farmácia (Trier), lidas pela ponte local. Usa as cores e componentes de ../css/styles.css */
+
+/* ---------- página inicial das consultas ---------- */
+.consultas-inicio { display: flex; flex-direction: column; gap: 14px; }
+.ponte-status { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ponte-status .selo-texto { font-size: 13px; }
+.consultas-cartoes { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+.consulta-cartao {
+  display: flex; flex-direction: column; gap: 6px; padding: 16px; border-radius: 14px; text-decoration: none; color: inherit;
+  background: var(--superficie); border: 1px solid var(--borda);
+}
+.consulta-cartao:hover { border-color: var(--pri); }
+.consulta-cartao .ti { font-size: 26px; color: var(--pri); }
+.consulta-cartao b { font-size: 16px; }
+.consulta-cartao span { font-size: 13px; color: var(--texto-2); }
+.consulta-cartao.em-breve { opacity: .55; pointer-events: none; border-style: dashed; }
+
+/* ---------- crediário (consulta ao Trier pela ponte) ---------- */
+.crediario { display: flex; flex-direction: column; gap: 14px; }
+.cred-abas { max-width: 560px; }
+.cred-abas span { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.cred-corpo { display: flex; flex-direction: column; gap: 14px; }
+.cred-cliente { display: flex; flex-direction: column; gap: 12px; }
+.cred-cliente-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.cred-cliente-topo h2 { margin: 0 0 2px; }
+.metrica.perigo { border-color: var(--perigo-borda); background: var(--perigo-bg); }
+.metrica.perigo .metrica-valor { color: var(--perigo); }
+.cred-vencido { color: var(--perigo); font-weight: 600; font-size: 12px; display: block; }
+.linha-valor .cred-vencido { text-align: right; }
+.cred-subtotal { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+.temp-dia-titulo .botoes { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.mini-tabela .num { text-align: right; white-space: nowrap; }
+.mini-tabela tfoot td { border-top: 2px solid var(--borda-forte); background: var(--superficie-2); }
+.mini-tabela tr.vencida td:first-child { box-shadow: inset 3px 0 0 var(--perigo-borda); }
+.mini-tabela tr.vencida td small { color: var(--perigo); font-weight: 600; }
+.mini-tabela tr.hoje td small { color: var(--atencao); font-weight: 600; }
+.mini-tabela tr.marcada td { background: var(--info-bg); }
+.cred-parcelas tbody tr { cursor: pointer; }
+.cred-parcelas input[type="checkbox"] { width: 18px; height: 18px; margin: 0; }
+.mini-tabela tr.cancelado td { color: var(--mudo); text-decoration: line-through; }
+.mini-tabela tr.cancelado td small { text-decoration: none; }
+.cred-ponte { flex-wrap: wrap; }
+.cred-ponte code { font-size: 13px; }
+@media print {
+  .sub-topo, .so-tela, .cred-abas, .filtros, .pagina-topo .botoes, #toasts { display: none !important; }
+  .sub-main { padding: 0; }
+  .crediario .mini-tabela { font-size: 11px; }
+}
