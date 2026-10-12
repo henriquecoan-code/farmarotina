@@ -19,3 +19,6 @@ export const firebaseConfig = {
 };
 
 export const DEMO = !firebaseConfig.projectId;
+
+// Ponte do crediário: programa (pasta ponte/) que roda no computador da farmácia e lê o banco do Trier
+export const PONTE_URL = 'http://127.0.0.1:3790';

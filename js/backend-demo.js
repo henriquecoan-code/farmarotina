@@ -119,6 +119,7 @@ export async function cadastrar(nome, email) {
   await entrar(email);
 }
 export async function recuperarSenha() {}
+export async function tokenAcesso() { return null; }
 export function definirUsuario() {}
 export async function criarPerfilPendente() {}
 

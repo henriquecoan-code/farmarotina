@@ -580,3 +580,36 @@ input[type=checkbox], input[type=radio] { width: auto; min-height: 0; accent-col
   .troca-item .acao-rapida { width: 32px; padding: 0; justify-content: center; }
   .troca-item .rotulo-concluir { display: none; }
 }
+
+/* ---------- crediário (consulta ao Trier pela ponte) ---------- */
+.crediario { display: flex; flex-direction: column; gap: 14px; }
+.cred-abas { max-width: 560px; }
+.cred-abas span { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.cred-corpo { display: flex; flex-direction: column; gap: 14px; }
+.cred-cliente { display: flex; flex-direction: column; gap: 12px; }
+.cred-cliente-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.cred-cliente-topo h2 { margin: 0 0 2px; }
+.metrica.perigo { border-color: var(--perigo-borda); background: var(--perigo-bg); }
+.metrica.perigo .metrica-valor { color: var(--perigo); }
+.cred-vencido { color: var(--perigo); font-weight: 600; font-size: 12px; display: block; }
+.linha-valor .cred-vencido { text-align: right; }
+.cred-subtotal { margin-left: auto; font-weight: 600; font-variant-numeric: tabular-nums; }
+.temp-dia-titulo .botoes { margin-left: auto; display: flex; gap: 6px; flex-wrap: wrap; }
+.mini-tabela .num { text-align: right; white-space: nowrap; }
+.mini-tabela tfoot td { border-top: 2px solid var(--borda-forte); background: var(--superficie-2); }
+.mini-tabela tr.vencida td:first-child { box-shadow: inset 3px 0 0 var(--perigo-borda); }
+.mini-tabela tr.vencida td small { color: var(--perigo); font-weight: 600; }
+.mini-tabela tr.hoje td small { color: var(--atencao); font-weight: 600; }
+.mini-tabela tr.marcada td { background: var(--info-bg); }
+.cred-parcelas tbody tr { cursor: pointer; }
+.cred-parcelas input[type="checkbox"] { width: 18px; height: 18px; margin: 0; }
+.mini-tabela tr.cancelado td { color: var(--mudo); text-decoration: line-through; }
+.mini-tabela tr.cancelado td small { text-decoration: none; }
+.cred-ponte { flex-wrap: wrap; }
+.cred-ponte code { font-size: 13px; }
+@media print {
+  body:not(.imprimindo) .lateral, body:not(.imprimindo) .barra-inferior, body:not(.imprimindo) .topo-celular,
+  body:not(.imprimindo) .so-tela, body:not(.imprimindo) .cred-abas, body:not(.imprimindo) .filtros,
+  body:not(.imprimindo) .pagina-topo .botoes, body:not(.imprimindo) #toasts { display: none !important; }
+  body:not(.imprimindo) .crediario .mini-tabela { font-size: 11px; }
+}

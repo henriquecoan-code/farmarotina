@@ -88,6 +88,28 @@ Usam o mesmo login do FarmaRotina e aparecem no menu lateral para quem tem o mó
   - a linha "Total Geral:" do relatório é descartada (no sistema antigo ela entrava como produto e dobrava os totais).
 - **Dados do sistema antigo:** o arquivo `historico_migracao.json` (gerado do banco antigo, **fora** deste repositório) é importado uma vez em *Histórico de vendas → Importar mês → Trazer dados do sistema antigo*.
 
+### Crediário (consulta ao Trier, pela pasta `ponte/`)
+Tela **Crediário** no menu, para quem tem o módulo liberado. Ela **só lê** o banco do Trier e **nada vai para a nuvem**: os dados passam direto do banco para a tela, por um programa (a "ponte") que roda no próprio computador da farmácia.
+- **Cliente:** busca por nome, código ou CPF e mostra as parcelas em aberto (vencidas em vermelho), com juros estimados até hoje (como o Trier calcula: % ao dia do cadastro, depois da carência), o total para quitar, os últimos pagamentos e o WhatsApp. Dá para **marcar as parcelas** que o cliente vai pagar e ver a soma.
+- **Recebimentos:** conferência por período (padrão hoje), separada por caixa, com total recebido, valor das parcelas, juros/multa e os cancelados à parte.
+- **Em atraso:** clientes com parcela vencida (1, 30, 60, 90, 180 dias ou 1 ano), com botão de cobrança pelo WhatsApp.
+- **Só funciona nos computadores da farmácia em que a ponte estiver aberta.** No celular ou fora da farmácia aparece o aviso "O programa do crediário não está rodando neste computador".
+
+**Instalar a ponte num computador da farmácia:**
+1. Ter o [Node.js](https://nodejs.org) instalado.
+2. Copiar a pasta `ponte/` do repositório e, dentro dela, rodar `npm install` uma vez.
+3. Criar `C:\FarmaRotinaPonte\config.json` a partir do `ponte/config.exemplo.json` (servidor, banco, usuário e senha). **Esse arquivo nunca vai para o GitHub.** Opcionais: `filial` (padrão 3), `carenciaJuros` (padrão 10 dias), `portaPonte` (padrão 3790).
+4. Abrir `ponte/iniciar.bat` (deixar a janela minimizada). Para abrir junto com o Windows: `Win + R` → `shell:startup` → colar ali um atalho do `iniciar.bat`.
+5. No FarmaRotina, liberar o módulo **Crediário** para quem vai usar (admin já tem).
+
+**Usuário do banco:** use um usuário só de leitura. No Trier o grupo `consulta` já tem leitura de tudo; no pgAdmin, conectado ao banco do Trier como `postgres`:
+```sql
+CREATE ROLE farmarotina_leitura LOGIN PASSWORD 'SENHA-FORTE';
+GRANT consulta TO farmarotina_leitura;
+ALTER ROLE farmarotina_leitura SET default_transaction_read_only = on;
+```
+Além disso a ponte abre toda conexão em modo somente leitura, só aceita pedidos deste computador (127.0.0.1), só do site do FarmaRotina, e confere o login de quem pede (admin ou módulo Crediário).
+
 ### Configurações (cada usuário a sua)
 - **Menu lateral do jeito de cada um:**
   - No computador, o botão de ajustes **Organizar o menu** (ao lado do nome do app) permite arrastar os itens e esconder com o olho.
@@ -213,7 +235,8 @@ js/modulos/*.js                           → campos, alertas e comportamento de
 js/form.js                                → formulários gerados a partir dos módulos
 js/agenda.js                              → agenda, cores de prazo e mensagens de WhatsApp
 js/anexos.js, js/export.js                → anexos, CSV e impressão
-js/paginas/*.js                           → telas
+js/paginas/*.js                           → telas (crediario.js lê o Trier pela ponte)
+ponte/                                    → programa local que lê o banco do Trier (Node, somente leitura)
 firestore.rules                           → segurança
 ```
 
@@ -270,3 +293,4 @@ Opções que um módulo pode usar (veja os exemplos em `js/modulos/`):
 - **Anotações:** botão Resolvido também na lista de anotações.
 - **Configurações:** menu lateral personalizável por usuário (arrastar no computador; tela de Configurações no celular), barra do celular e atalhos da tela inicial.
 - **Compras:** Pedido de compras e Histórico de vendas, trazidos do sistema em Python para páginas do site (sem servidor), com os dados no Firebase.
+- **Crediário:** consulta do que o cliente tem em aberto, conferência dos recebimentos e clientes em atraso, lendo o banco do Trier pela ponte local (`ponte/`), sem guardar nada na nuvem.

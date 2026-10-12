@@ -11,6 +11,7 @@ export const MODULOS = [
   { id: 'rotinas', nome: 'Rotinas (mensais, semanais…)' },
   { id: 'pedido', nome: 'Pedido de compras' },
   { id: 'historico', nome: 'Histórico de vendas' },
+  { id: 'crediario', nome: 'Crediário (consulta no Trier)' },
 ];
 
 export const PERFIS = {

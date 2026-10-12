@@ -1,0 +1,13 @@
+{
+  "name": "farmarotina-ponte",
+  "private": true,
+  "description": "Ponte local (somente leitura) entre o FarmaRotina e o banco Postgres do Trier",
+  "type": "module",
+  "scripts": {
+    "explorar": "node explorar.js",
+    "iniciar": "node servidor.js"
+  },
+  "dependencies": {
+    "pg": "8.13.1"
+  }
+}

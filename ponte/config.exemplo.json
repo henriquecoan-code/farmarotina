@@ -1,0 +1,7 @@
+{
+  "host": "IP-DO-SERVIDOR-DO-TRIER",
+  "porta": 5432,
+  "banco": "NOME-DO-BANCO",
+  "usuario": "farmarotina_leitura",
+  "senha": "SENHA-AQUI"
+}

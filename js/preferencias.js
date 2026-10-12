@@ -8,6 +8,7 @@ const PADRAO_CELULAR = ['afericoes', 'temperatura', 'atendimentos', 'clientes', 
 const FORA_DOS_ATALHOS = ['pops', 'rotinas'];
 
 const PAGINAS_EXTRAS = [
+  { id: 'crediario', rota: 'crediario', href: '#/crediario', icone: 'wallet', nome: 'Crediário' },
   { id: 'pedido', rota: 'pedido', href: 'compras/pedido.html', icone: 'shopping-cart', nome: 'Pedido de compras' },
   { id: 'historico', rota: 'historico', href: 'compras/historico.html', icone: 'chart-line', nome: 'Histórico de vendas' },
 ];
@@ -20,7 +21,7 @@ export function itensMenu() {
     { id: 'inicio', rota: '', href: '#/', icone: 'home', nome: 'Início', fixo: 'topo' },
     ...visiveis().filter((s) => s.menu !== false)
       .map((s) => ({ id: s.id, rota: s.id, href: `#/m/${s.id}`, icone: s.icone, nome: s.nome, schema: s })),
-    // Páginas separadas do site (pasta compras/), abertas a partir do menu
+    // Páginas fora dos módulos de registro (crediário e a pasta compras/)
     ...PAGINAS_EXTRAS.filter((p) => podeVer(p.id)),
     { id: 'configuracoes', rota: 'configuracoes', href: '#/configuracoes', icone: 'settings', nome: 'Configurações', fixo: 'fim' },
     ...(ehAdmin() ? [{ id: 'usuarios', rota: 'usuarios', href: '#/usuarios', icone: 'shield-lock', nome: 'Usuários', fixo: 'fim' }] : []),

@@ -43,6 +43,8 @@ export function observarAuth(cb) {
 export const entrar = (email, senha) => signInWithEmailAndPassword(auth, email, senha);
 export const sair = () => signOut(auth);
 export const recuperarSenha = (email) => sendPasswordResetEmail(auth, email);
+// Token do login, para serviços fora do Firebase (ex.: a ponte do crediário conferir quem está pedindo)
+export const tokenAcesso = () => auth.currentUser?.getIdToken() ?? Promise.resolve(null);
 
 export async function cadastrar(nome, email, senha) {
   const cred = await createUserWithEmailAndPassword(auth, email, senha);
