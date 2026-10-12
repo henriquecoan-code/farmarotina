@@ -113,3 +113,101 @@ export async function atrasados(pool, { rede, filial }, diasMin = 1) {
      ORDER BY min(c.dat_vencto)`, [rede, filial, diasMin]);
   return rows;
 }
+
+// ---------- Produtos ----------
+//  - cadprodu: cadastro (cod_reduzido = código interno). flg_ativo 'A'/'I'. cod_dcb, cod_concentracao,
+//      tip_apresenta (forma) e unidade_apresentacao (quantidade, ex.: 30).
+//  - cadcddcb / produto_concentracao / cadlabor: nomes do DCB, da concentração e do laboratório.
+//  - cadestoq: estoque, mínimo, demanda e curva da filial; vlr_custoaq = custo real de aquisição (com os descontos da
+//      compra). O vlr_custo do cadprodu é o custo de cadastro (preço de fábrica), bem maior nos genéricos.
+//  - cadcdbar: códigos de barras.
+//  - cadicomp + cadforne: compras (notas de entrada). cadivend: itens vendidos (flg_excluido 'S' = venda excluída);
+//      o cliente vem de cadcvend.cod_cliente (vazio = venda sem cliente identificado).
+
+// Nomes deduzidos dos produtos de cada código no banco
+export const FORMAS = { 0: 'Outros', 1: 'Comprimido/cápsula', 2: 'Injetável', 3: 'Gotas', 4: 'Líquido', 5: 'Gel/pomada/creme' };
+
+const nomeProdSql = `upper(translate(p.nom_produto, '${SEM_ACENTO_DE}', '${SEM_ACENTO_PARA}'))`;
+// Preço: vlr_venda é o preço cheio (normalmente = PMC) e prc_desconto o desconto padrão do produto
+// (as tabelas de desconto caddescp/caddesca estão vazias). Preço final = venda com o desconto; a margem é sobre ele.
+const custoSql = `coalesce(nullif(e.vlr_custoaq, 0), p.vlr_custo)`;
+const pmcSql = `greatest(coalesce(p.vlr_pmc, 0), p.vlr_venda)`;
+const precoSql = `round(p.vlr_venda * (1 - coalesce(p.prc_desconto, 0) / 100), 2)`;
+const descontoSql = `CASE WHEN ${pmcSql} > 0 THEN round((${pmcSql} - ${precoSql}) / ${pmcSql} * 100, 1) END`;
+const margemSql = `CASE WHEN ${precoSql} > 0 THEN round((${precoSql} - ${custoSql}) / ${precoSql} * 100, 1) END`;
+const camposLista = `p.cod_reduzido AS id, p.nom_produto AS nome, p.flg_ativo = 'A' AS ativo, l.nom_laborat AS laboratorio,
+  coalesce(e.qtd_estoque, 0) AS estoque, ${pmcSql} AS pmc, ${precoSql} AS venda, ${descontoSql} AS desconto, ${custoSql} AS custo, ${margemSql} AS margem, e.tip_curva AS curva,
+  c.nom_concentracao AS concentracao, p.tip_apresenta AS forma, p.unidade_apresentacao AS quantidade`;
+const juncoes = `
+  LEFT JOIN cadlabor l ON l.cod_rede = p.cod_rede AND l.cod_laborat = p.cod_laborat
+  LEFT JOIN cadestoq e ON e.cod_rede = p.cod_rede AND e.cod_filial = $2 AND e.cod_reduzido = p.cod_reduzido
+  LEFT JOIN produto_concentracao c ON c.cod_rede = p.cod_rede AND c.cod_concentracao = p.cod_concentracao`;
+
+export async function buscarProdutos(pool, { rede, filial }, busca, inativos = false) {
+  const texto = semAcento(busca).trim().toUpperCase();
+  if (texto.length < 2) return [];
+  const digitos = /^\d+$/.test(texto) ? texto : '';
+  const nome = '%' + texto.split(/\s+/).join('%') + '%';
+  const { rows } = await pool.query(`
+    SELECT ${camposLista}
+      FROM cadprodu p ${juncoes}
+     WHERE p.cod_rede = $1 AND ($5 OR p.flg_ativo = 'A')
+       AND (${nomeProdSql} LIKE $3
+            OR p.cod_produto = $4 OR p.cod_reduzido = $6
+            OR EXISTS (SELECT 1 FROM cadcdbar b WHERE b.cod_rede = p.cod_rede AND b.cod_reduzido = p.cod_reduzido
+                         AND (b.cod_barra = $7 OR b.gtin = $4)))
+     ORDER BY (p.flg_ativo = 'A') DESC, (coalesce(e.qtd_estoque, 0) > 0) DESC, p.nom_produto
+     LIMIT 40`, [rede, filial, nome, digitos || '-', inativos, digitos && digitos.length <= 9 ? Number(digitos) : -1,
+    digitos && digitos.length <= 14 ? digitos : null]);
+  return rows;
+}
+
+export async function produto(pool, { rede, filial }, id) {
+  const { rows: [prod] } = await pool.query(`
+    SELECT ${camposLista}, p.cod_produto AS codigo, p.cod_dcb AS dcb, d.nom_dcb AS "nomeDcb", p.vlr_custo AS "custoCadastro", p.prc_descmax AS "descontoMaximo",
+           p.dat_alterpreco AS "alteracaoPreco", nullif(trim(p.nom_descapresentacao), '') AS "descApresentacao",
+           e.est_minimo AS minimo, e.qtd_demanda AS demanda, e.dat_ultent AS "ultimaEntrada", e.qtd_ultent AS "qtdUltimaEntrada",
+           e.dat_ultsai AS "ultimaSaida", nullif(trim(p.nom_local), '') AS local,
+           (SELECT string_agg(coalesce(nullif(b.gtin, ''), b.cod_barra::text), ', ') FROM cadcdbar b WHERE b.cod_rede = p.cod_rede AND b.cod_reduzido = p.cod_reduzido) AS ean
+      FROM cadprodu p ${juncoes}
+      LEFT JOIN cadcddcb d ON d.cod_rede = p.cod_rede AND d.cod_dcb = p.cod_dcb
+     WHERE p.cod_rede = $1 AND p.cod_reduzido = $3`, [rede, filial, id]);
+  if (!prod) return null;
+  const { rows: similares } = prod.dcb ? await pool.query(`
+    SELECT ${camposLista}
+      FROM cadprodu p ${juncoes}
+     WHERE p.cod_rede = $1 AND p.cod_dcb = $3 AND (p.flg_ativo = 'A' OR p.cod_reduzido = $4)
+     ORDER BY c.nom_concentracao NULLS LAST, p.unidade_apresentacao NULLS LAST, p.vlr_venda`, [rede, filial, prod.dcb, id]) : { rows: [] };
+  return { produto: prod, similares, formas: FORMAS };
+}
+
+// Compras e vendas do produto nos últimos `dias` (padrão 90): totais do período e as listas (até 200 linhas cada)
+export async function produtoInfo(pool, { rede, filial }, id, dias = 90) {
+  const desde = `current_date - $4::int`;
+  const { rows: compras } = await pool.query(`
+    SELECT i.dat_entrada AS data, f.nom_fornec AS fornecedor, coalesce(i.num_nf, i.num_nota) AS nf,
+           i.qtd_produto AS quantidade, i.qtd_fator AS fator, i.vlr_unitario AS unitario, i.prc_descto AS desconto, i.vlr_custo AS custo, i.vlr_total AS total
+      FROM cadicomp i
+      LEFT JOIN cadforne f ON f.cod_rede = i.cod_rede AND f.cod_fornec = i.cod_fornec
+     WHERE i.cod_rede = $1 AND i.cod_filial = $2 AND i.cod_reduzido = $3 AND i.dat_entrada >= ${desde}
+     ORDER BY i.dat_entrada DESC, i.hor_entrada DESC NULLS LAST LIMIT 200`, [rede, filial, id, dias]);
+  const { rows: vendas } = await pool.query(`
+    SELECT v.dat_emissao AS data, v.hor_emissao::text AS hora, v.qtd_produto AS quantidade, v.vlr_unitario AS unitario,
+           v.prc_descto AS desconto, v.vlr_total AS total, cv.cod_cliente AS "clienteId", cl.nom_cliente AS cliente
+      FROM cadivend v
+      LEFT JOIN cadcvend cv ON cv.cod_rede = v.cod_rede AND cv.cod_filial = v.cod_filial AND cv.num_nota = v.num_nota
+      LEFT JOIN cadclien cl ON cl.cod_rede = cv.cod_rede AND cl.cod_cliente = cv.cod_cliente
+     WHERE v.cod_rede = $1 AND v.cod_filial = $2 AND v.cod_reduzido = $3 AND coalesce(v.flg_excluido, 'N') <> 'S'
+       AND v.dat_emissao >= ${desde}
+     ORDER BY v.dat_emissao DESC, v.hor_emissao DESC LIMIT 200`, [rede, filial, id, dias]);
+  // Totais calculados no banco (valem mesmo se a lista passar de 200 linhas)
+  const { rows: [totais] } = await pool.query(`
+    SELECT (SELECT coalesce(sum(qtd_produto), 0) FROM cadicomp WHERE cod_rede = $1 AND cod_filial = $2 AND cod_reduzido = $3 AND dat_entrada >= ${desde}) AS "qtdComprada",
+           (SELECT coalesce(sum(vlr_total), 0) FROM cadicomp WHERE cod_rede = $1 AND cod_filial = $2 AND cod_reduzido = $3 AND dat_entrada >= ${desde}) AS "valorComprado",
+           (SELECT count(*) FROM cadicomp WHERE cod_rede = $1 AND cod_filial = $2 AND cod_reduzido = $3 AND dat_entrada >= ${desde}) AS compras,
+           (SELECT coalesce(sum(qtd_produto), 0) FROM cadivend WHERE cod_rede = $1 AND cod_filial = $2 AND cod_reduzido = $3 AND coalesce(flg_excluido, 'N') <> 'S' AND dat_emissao >= ${desde}) AS "qtdVendida",
+           (SELECT coalesce(sum(vlr_total), 0) FROM cadivend WHERE cod_rede = $1 AND cod_filial = $2 AND cod_reduzido = $3 AND coalesce(flg_excluido, 'N') <> 'S' AND dat_emissao >= ${desde}) AS "valorVendido",
+           (SELECT count(*) FROM cadivend WHERE cod_rede = $1 AND cod_filial = $2 AND cod_reduzido = $3 AND coalesce(flg_excluido, 'N') <> 'S' AND dat_emissao >= ${desde}) AS vendas`,
+  [rede, filial, id, dias]);
+  return { dias, totais, compras, vendas };
+}

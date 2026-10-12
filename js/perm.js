@@ -13,6 +13,7 @@ export const MODULOS = [
   { id: 'historico', nome: 'Histórico de vendas' },
   // Consultas ao sistema da farmácia (Trier), na página separada consultas/consulta.html
   { id: 'crediario', nome: 'Crediário (consulta no Trier)', grupo: 'consultas' },
+  { id: 'produtos', nome: 'Produtos (consulta no Trier)', grupo: 'consultas' },
 ];
 
 export const PERFIS = {

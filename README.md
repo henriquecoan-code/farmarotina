@@ -97,6 +97,12 @@ Item **Consultas Trier** no menu → `consultas/consulta.html`, uma área à par
 - **Em atraso:** clientes com parcela vencida (1, 30, 60, 90, 180 dias ou 1 ano), com botão de cobrança pelo WhatsApp.
 - **Só funciona nos computadores da farmácia em que a ponte estiver aberta.** No celular ou fora da farmácia aparece o aviso "O programa de consultas não está rodando neste computador".
 
+**Produtos** (`consultas/produtos.html`) — para gerência e compras:
+- busca por nome, código ou código de barras (bipar abre direto), com opção de incluir inativos; cada resultado mostra laboratório, estoque, **preço com desconto**, PMC e o % de desconto;
+- no produto: PMC, desconto (padrão do cadastro, com o máximo), preço de venda, **custo de aquisição** (o custo real da última compra, com os descontos; o custo do cadastro aparece embaixo), margem sobre o preço com desconto e estoque com mínimo e curva;
+- tabela **Mesmo DCB** com os equivalentes e os filtros **Mesma concentração**, **Mesma apresentação** e **Com estoque**;
+- botão **Inf.** em cada produto: período editável (padrão **últimos 90 dias**, com atalhos 30/90/180/365), totais comprado e vendido e a média de venda por mês, e lado a lado as compras (fornecedor, desconto, custo) e as vendas **com o cliente** (link para o Crediário) do período.
+
 **Criar outro módulo de consulta:** consulta SQL em `ponte/consultas.js` + rota em `ponte/servidor.js`; página `.html` + `.js` em `consultas/` usando `iniciar` e `api` de `consultas/js/comum.js`; item em `CONSULTAS` (mesmo arquivo); módulo em `js/perm.js` com `grupo: 'consultas'` (ele já entra no item do menu).
 
 **Instalar a ponte num computador da farmácia:**
@@ -300,4 +306,4 @@ Opções que um módulo pode usar (veja os exemplos em `js/modulos/`):
 - **Anotações:** botão Resolvido também na lista de anotações.
 - **Configurações:** menu lateral personalizável por usuário (arrastar no computador; tela de Configurações no celular), barra do celular e atalhos da tela inicial.
 - **Compras:** Pedido de compras e Histórico de vendas, trazidos do sistema em Python para páginas do site (sem servidor), com os dados no Firebase.
-- **Consultas Trier** (página separada `consultas/consulta.html`): primeiro módulo **Crediário** — o que o cliente tem em aberto, conferência dos recebimentos e clientes em atraso, lendo o banco do Trier pela ponte local (`ponte/`), sem guardar nada na nuvem.
+- **Consultas Trier** (página separada `consultas/consulta.html`): módulos **Crediário** e **Produtos**. Crediário — o que o cliente tem em aberto, conferência dos recebimentos e clientes em atraso, lendo o banco do Trier pela ponte local (`ponte/`), sem guardar nada na nuvem.

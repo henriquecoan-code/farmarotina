@@ -5,12 +5,15 @@ import { DEMO, PONTE_URL } from '../../js/config.js';
 import { iniciarSubsite } from '../../js/subsite.js';
 import { esc, icone } from '../../js/util.js';
 import { demoCrediario } from './crediario-demo.js';
+import { demoProdutos } from './produtos-demo.js';
 
 // Módulos de consulta. Para criar um novo: página .html + js nesta pasta, rota na ponte e um item aqui
 // (e o módulo em js/perm.js com grupo: 'consultas').
 export const CONSULTAS = [
   { id: 'crediario', modulo: 'crediario', href: 'crediario.html', icone: 'wallet', nome: 'Crediário',
     desc: 'O que o cliente tem em aberto, conferência dos recebimentos e clientes em atraso.' },
+  { id: 'produtos', modulo: 'produtos', href: 'produtos.html', icone: 'pill', nome: 'Produtos',
+    desc: 'Preço, custo, margem e estoque, produtos com o mesmo DCB e as compras e vendas de cada um.' },
 ];
 
 const PAGINAS = [
@@ -25,7 +28,7 @@ export function iniciar({ atual, modulos, titulo, montar }) {
 export class PonteDesligada extends Error {}
 
 // Dados fictícios no modo demonstração, para testar sem a ponte
-const DEMOS = { crediario: demoCrediario };
+const DEMOS = { crediario: demoCrediario, produtos: demoProdutos };
 
 export async function api(caminho, demo) {
   if (DEMO) {

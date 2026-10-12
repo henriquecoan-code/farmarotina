@@ -1,6 +1,6 @@
 // Ponte local entre o FarmaRotina (navegador) e o banco do Trier — SOMENTE LEITURA.
 // Escuta só neste computador (127.0.0.1). Cada pedido precisa do login do FarmaRotina:
-// o token do Firebase é conferido aqui e o usuário precisa ser admin ou ter o módulo "crediario".
+// o token do Firebase é conferido aqui e o usuário precisa ser admin ou ter o módulo da consulta (ROTAS abaixo).
 import http from 'node:http';
 import crypto from 'node:crypto';
 import { lerConfig, criarPool, CAMINHO_CONFIG } from './banco.js';
@@ -33,7 +33,7 @@ const b64 = (s) => Buffer.from(s, 'base64url');
 
 async function verificarToken(token) {
   const [cab, corpo, assinatura] = String(token).split('.');
-  if (!assinatura) throw new ErroHttp(401, 'Entre no FarmaRotina para consultar o crediário.');
+  if (!assinatura) throw new ErroHttp(401, 'Entre no FarmaRotina para usar as consultas.');
   let h, d;
   try { h = JSON.parse(b64(cab)); d = JSON.parse(b64(corpo)); } catch { throw new ErroHttp(401, 'Login inválido.'); }
   const pem = h.alg === 'RS256' && (await certificados())[h.kid];
@@ -48,7 +48,7 @@ async function verificarToken(token) {
 
 // Permissão lida do perfil do usuário no Firestore (com o próprio token dele); guardada por 5 minutos
 const permissoes = new Map();
-async function autorizar(req) {
+async function autorizar(req, modulo, nomeModulo) {
   const token = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
   const { sub: uid } = await verificarToken(token);
   let p = permissoes.get(uid);
@@ -57,11 +57,12 @@ async function autorizar(req) {
       { headers: { Authorization: `Bearer ${token}` } });
     const f = r.ok ? (await r.json()).fields || {} : {};
     const modulos = (f.modulos?.arrayValue?.values || []).map((v) => v.stringValue);
-    const ok = f.ativo?.booleanValue === true && (f.papel?.stringValue === 'admin' || modulos.includes('crediario'));
-    p = { ok, ate: Date.now() + 5 * 60 * 1000 };
+    p = { ativo: f.ativo?.booleanValue === true, admin: f.papel?.stringValue === 'admin', modulos, ate: Date.now() + 5 * 60 * 1000 };
     permissoes.set(uid, p);
   }
-  if (!p.ok) throw new ErroHttp(403, 'Seu usuário não tem acesso ao Crediário. Peça ao administrador.');
+  if (!p.ativo || !(p.admin || p.modulos.includes(modulo))) {
+    throw new ErroHttp(403, `Seu usuário não tem acesso a ${nomeModulo}. Peça ao administrador.`);
+  }
 }
 
 // ---------- rotas ----------
@@ -75,7 +76,25 @@ async function responder(url, req) {
     try { await pool.query('SELECT 1'); banco = true; } catch { /* informa abaixo */ }
     return { ok: true, versao: VERSAO, filial: opcoes.filial, banco };
   }
-  await autorizar(req);
+  // Permissão exigida por cada rota (módulo do FarmaRotina)
+  const ROTAS = { clientes: 'crediario', recebimentos: 'crediario', atrasados: 'crediario', produtos: 'produtos' };
+  const NOMES = { crediario: 'o Crediário', produtos: 'a consulta de Produtos' };
+  const modulo = ROTAS[partes[0]];
+  if (!modulo) throw new ErroHttp(404, 'Endereço não encontrado.');
+  await autorizar(req, modulo, NOMES[modulo]);
+  if (partes[0] === 'produtos' && !partes[1]) {
+    return consultas.buscarProdutos(pool, opcoes, url.searchParams.get('busca') || '', url.searchParams.get('inativos') === '1');
+  }
+  if (partes[0] === 'produtos' && /^\d+$/.test(partes[1])) {
+    const id = Number(partes[1]);
+    if (partes[2] === 'info') {
+      const dias = Math.max(1, Math.min(3650, Number(url.searchParams.get('dias')) || 90));
+      return consultas.produtoInfo(pool, opcoes, id, dias);
+    }
+    const r = await consultas.produto(pool, opcoes, id);
+    if (!r) throw new ErroHttp(404, 'Produto não encontrado.');
+    return r;
+  }
   if (partes[0] === 'clientes' && !partes[1]) return consultas.buscarClientes(pool, opcoes, url.searchParams.get('busca') || '');
   if (partes[0] === 'clientes' && /^\d+$/.test(partes[1])) {
     const r = await consultas.cliente(pool, opcoes, Number(partes[1]));
