@@ -93,7 +93,8 @@ Item **Consultas Trier** no menu → `consultas/consulta.html`, uma área à par
 
 **Crediário** (`consultas/crediario.html`) — **só lê** o banco do Trier e **nada vai para a nuvem**: os dados passam direto do banco para a tela, por um programa (a "ponte") que roda no próprio computador da farmácia.
 - **Cliente:** busca por nome, código ou CPF e mostra as parcelas em aberto (vencidas em vermelho), com juros estimados até hoje (como o Trier calcula: % ao dia do cadastro, depois da carência), o total para quitar, os últimos pagamentos e o WhatsApp. Dá para **marcar as parcelas** que o cliente vai pagar e ver a soma.
-- **Recebimentos:** conferência por período (padrão hoje), separada por caixa, com total recebido, valor das parcelas, juros/multa e os cancelados à parte.
+- **Saldo devedor:** quando o cliente paga só parte, o Trier baixa as parcelas e guarda o que faltou como saldo devedor (tabela `cadslddv`). Esses saldos aparecem junto das parcelas ("Saldo devedor — restou do pagamento de dd/mm"), com juros pela mesma regra, e entram em todos os totais, na busca e em Em atraso.
+- **Recebimentos:** conferência por período (padrão hoje), separada por caixa. O **recebido** é o que o cliente pagou de fato (parcelas e saldos baixados − saldo novo que ficou); mostra também juros/multa, quanto ficou de saldo devedor e os cancelados à parte.
 - **Em atraso:** clientes com parcela vencida (1, 30, 60, 90, 180 dias ou 1 ano), com botão de cobrança pelo WhatsApp.
 - **Só funciona nos computadores da farmácia em que a ponte estiver aberta.** No celular ou fora da farmácia aparece o aviso "O programa de consultas não está rodando neste computador".
 

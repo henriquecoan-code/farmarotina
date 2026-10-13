@@ -125,7 +125,7 @@ async function abaCliente(corpo, id) {
       ${obs.length ? `<div class="alerta info">${icone('info-circle')}<span>${obs.map(esc).join('<br>')}</span></div>` : ''}
       <div class="metricas cred-metricas">
         <div class="metrica"><div class="metrica-rotulo">Em aberto</div><div class="metrica-valor">${moeda(soma(parcelas, 'valor'))}</div>
-          <div class="mudo pequeno">${parcelas.length} parcela(s)</div></div>
+          <div class="mudo pequeno">${parcelas.filter((p) => !p.saldo).length} parcela(s)${parcelas.some((p) => p.saldo) ? ` + ${parcelas.filter((p) => p.saldo).length} saldo(s)` : ''}</div></div>
         <div class="metrica ${vencidas.length ? 'perigo' : ''}"><div class="metrica-rotulo">Total + juros</div><div class="metrica-valor">${moeda(soma(parcelas, total))}</div>
           <div class="mudo pequeno">${vencidas.length ? `${vencidas.length} vencida(s): ${moeda(soma(vencidas, 'valor'))}` : 'para quitar hoje'}</div></div>
         <div class="metrica"><div class="metrica-rotulo">Juros e multa (estimado)</div><div class="metrica-valor">${moeda(soma(parcelas, (p) => (p.juros || 0) + (p.multa || 0)))}</div>
@@ -146,7 +146,8 @@ async function abaCliente(corpo, id) {
         <tbody>${parcelas.map((p, i) => `<tr class="${p.dias > 0 ? 'com-alerta vencida' : p.dias === 0 ? 'hoje' : ''}">
           <td class="so-tela"><input type="checkbox" data-i="${i}" aria-label="Marcar parcela"></td>
           <td><b>${fmtData(p.vencimento)}</b><small>${textoAtraso(p.dias)}</small></td>
-          <td>${p.nota}${p.totalParcelas > 1 ? ` · ${p.parcela}/${p.totalParcelas}` : ''}${p.tipo === 'D' ? ' <span class="selo-texto">D</span>' : ''}</td>
+          <td>${p.saldo ? `<span class="cred-saldo">Saldo devedor</span><small>restou do pagamento de ${fmtData(p.emissao).slice(0, 5)}</small>`
+            : `${p.nota}${p.totalParcelas > 1 ? ` · ${p.parcela}/${p.totalParcelas}` : ''}${p.tipo === 'D' ? ' <span class="selo-texto">D</span>' : ''}`}</td>
           <td class="some-celular">${fmtData(p.emissao)}</td>
           <td class="num">${moeda(p.valor)}</td>
           <td class="num some-celular">${p.juros || p.multa ? moeda((p.juros || 0) + (p.multa || 0)) : '<span class="mudo">—</span>'}</td>
@@ -165,9 +166,13 @@ async function abaCliente(corpo, id) {
 
     ${pagamentos.length ? `<section class="temp-dia">
       <div class="temp-dia-titulo"><b>Últimos pagamentos</b></div>
-      <table class="mini-tabela"><thead><tr><th>Data</th><th>Parcelas</th><th class="num">Juros</th><th class="num">Recebido</th></tr></thead>
-      <tbody>${pagamentos.map((g) => `<tr><td>${fmtData(g.data)}<small>${hora(g.hora)}</small></td><td>${g.parcelas}</td>
-        <td class="num">${g.encargos ? moeda(g.encargos) : '<span class="mudo">—</span>'}</td><td class="num">${moeda(g.recebido)}</td></tr>`).join('')}</tbody></table>
+      <table class="mini-tabela"><thead><tr><th>Data</th><th class="num some-celular">Itens</th><th class="num some-celular">Baixado</th>
+        <th class="num">Ficou saldo</th><th class="num">Pago</th></tr></thead>
+      <tbody>${pagamentos.map((g) => `<tr><td>${fmtData(g.data)}<small>${hora(g.hora)}</small></td>
+        <td class="num some-celular">${g.parcelas + (g.saldosPagos || 0)}</td>
+        <td class="num some-celular">${moeda(g.baixado)}${g.juros + g.multa ? `<small>juros ${moeda(g.juros + g.multa)}</small>` : ''}</td>
+        <td class="num">${g.saldoGerado ? `<span class="cred-saldo">${moeda(g.saldoGerado)}</span>` : '<span class="mudo">—</span>'}</td>
+        <td class="num"><b>${moeda(g.recebido)}</b></td></tr>`).join('')}</tbody></table>
     </section>` : ''}`;
 
   // Marcar parcelas para somar o que o cliente vai pagar
@@ -247,10 +252,12 @@ function desenharRecebimentos(lista, caixas) {
   return `<div class="metricas cred-metricas">
       <div class="metrica"><div class="metrica-rotulo">Total recebido</div><div class="metrica-valor">${moeda(soma(validos, 'recebido'))}</div>
         <div class="mudo pequeno">${validos.length} recebimento(s)</div></div>
-      <div class="metrica"><div class="metrica-rotulo">Valor das parcelas</div><div class="metrica-valor">${moeda(soma(validos, 'original'))}</div>
-        <div class="mudo pequeno">${soma(validos, 'parcelas')} parcela(s)</div></div>
+      <div class="metrica"><div class="metrica-rotulo">Parcelas e saldos baixados</div><div class="metrica-valor">${moeda(soma(validos, 'original'))}</div>
+        <div class="mudo pequeno">${soma(validos, 'parcelas')} parcela(s)${soma(validos, 'saldosPagos') ? ` + ${soma(validos, 'saldosPagos')} saldo(s)` : ''}</div></div>
       <div class="metrica"><div class="metrica-rotulo">Juros e multa</div><div class="metrica-valor">${moeda(soma(validos, encargos))}</div>
         <div class="mudo pequeno">${soma(validos, 'desconto') ? `descontos ${moeda(soma(validos, 'desconto'))}` : 'sem descontos'}</div></div>
+      <div class="metrica"><div class="metrica-rotulo">Ficou de saldo devedor</div><div class="metrica-valor">${moeda(soma(validos, 'saldoGerado'))}</div>
+        <div class="mudo pequeno">pagamentos parciais (fora do total)</div></div>
       ${cancelados.length ? `<div class="metrica perigo"><div class="metrica-rotulo">Cancelados</div><div class="metrica-valor">${moeda(soma(cancelados, 'recebido'))}</div>
         <div class="mudo pequeno">${cancelados.length} — fora do total</div></div>` : ''}
     </div>
@@ -262,15 +269,17 @@ function desenharRecebimentos(lista, caixas) {
           <span class="mudo">${cx ? `aberto ${fmtData(cx.abertoEm).slice(0, 5)} ${hora(cx.abertoAs)}${cx.fechadoEm ? ` · fechado ${fmtData(cx.fechadoEm).slice(0, 5)} ${hora(cx.fechadoAs)}` : ' · aberto agora'}` : ''}</span>
           <span class="cred-subtotal">${moeda(soma(ok, 'recebido'))}</span></div>
         <table class="mini-tabela">
-          <thead><tr><th>Hora</th><th>Cliente</th><th class="num some-celular">Parcelas</th><th class="num some-celular">Valor</th><th class="num">Juros</th><th class="num">Recebido</th></tr></thead>
+          <thead><tr><th>Hora</th><th>Cliente</th><th class="num some-celular">Itens</th><th class="num some-celular">Valor</th><th class="num">Juros</th>
+            <th class="num some-celular">Ficou saldo</th><th class="num">Recebido</th></tr></thead>
           <tbody>${rs.map((r) => `<tr class="${r.cancelado ? 'cancelado' : ''}" data-href="#cliente=${r.clienteId}">
             <td>${variosDias ? `${fmtData(r.data).slice(0, 5)} ` : ''}${hora(r.hora)}</td>
             <td><a href="#cliente=${r.clienteId}">${esc(r.cliente || `Cliente ${r.clienteId}`)}</a>
               ${r.cancelado ? '<small class="cred-vencido">recebimento cancelado</small>' : ''}</td>
-            <td class="num some-celular">${r.parcelas}</td>
+            <td class="num some-celular" title="${r.parcelas} parcela(s)${r.saldosPagos ? `, ${r.saldosPagos} saldo(s) devedor(es)` : ''}">${r.parcelas + (r.saldosPagos || 0)}</td>
             <td class="num some-celular">${moeda(r.original)}</td>
             <td class="num">${encargos(r) ? moeda(encargos(r)) : '<span class="mudo">—</span>'}</td>
-            <td class="num"><b>${moeda(r.recebido)}</b></td></tr>`).join('')}</tbody>
+            <td class="num some-celular">${r.saldoGerado ? `<span class="cred-saldo">${moeda(r.saldoGerado)}</span>` : '<span class="mudo">—</span>'}</td>
+            <td class="num"><b>${moeda(r.recebido)}</b>${r.saldoGerado ? '<small class="so-celular cred-saldo">parcial</small>' : ''}</td></tr>`).join('')}</tbody>
         </table></section>`;
     }).join('')}`;
 }
@@ -302,7 +311,7 @@ async function abaAtrasados(corpo) {
         <tbody>${vis.map((c) => {
           const zap = linkWhatsapp(c.telefone, `Olá, ${primeiroNome(c.nome)}! Aqui é ${farmacia}. Consta no seu crediário um valor em aberto desde ${fmtData(c.maisAntigo)}. Quando puder, passe na farmácia ou fale com a gente por aqui para combinarmos. Obrigado!`);
           return `<tr data-href="#cliente=${c.id}">
-            <td><a href="#cliente=${c.id}">${esc(c.nome || `Cliente ${c.id}`)}</a>${c.bloqueado ? ' <span class="selo-texto perigo">Bloqueado</span>' : ''}<small>Cód. ${c.id}</small></td>
+            <td><a href="#cliente=${c.id}">${esc(c.nome || `Cliente ${c.id}`)}</a>${c.bloqueado ? ' <span class="selo-texto perigo">Bloqueado</span>' : ''}<small>Cód. ${c.id}${c.saldos ? ` · ${c.saldos} saldo(s) devedor(es)` : ''}</small></td>
             <td>${fmtData(c.maisAntigo)}<small>${c.dias} dias</small></td>
             <td class="num some-celular">${c.parcelas}</td>
             <td class="num"><b>${moeda(c.vencido)}</b></td>

@@ -3,10 +3,15 @@
 // O que se descobriu da estrutura (filial 3; as filiais 1 e 2 são CNPJs antigos):
 //  - cadcredi: uma linha por parcela (cod_rede, cod_filial, num_nota, num_seqcadvlrfp, num_parcela).
 //      em aberto  = dat_receb IS NULL
-//      recebida   = dat_receb preenchida; num_seqrec agrupa as parcelas pagas juntas; num_caixa = caixa do dia
+//      recebida   = dat_receb preenchida; num_seqrec agrupa o que foi pago junto (o "recebimento"); num_caixa = caixa do dia
 //      cancelada  = dat_cancreceb preenchida (não entra nos totais recebidos)
 //      tip_venda  = 'V' venda, 'D' (a venda em cadcvend também é 'D')
 //      vlr_recebido = vlr_receber + vlr_jurosrec + vlr_multa - vlr_descrec
+//  - cadslddv: SALDO DEVEDOR. Quando o cliente paga só uma parte, o Trier baixa as parcelas inteiras e grava aqui o que
+//      faltou (num_seqrecorig = recebimento que gerou; dat_refer = data; dat_vencto = novo vencimento).
+//      Em aberto = dat_receb IS NULL e não cancelado. Quando é pago, recebe num_seqrec/num_caixareceb como uma parcela
+//      e cobra juros pela mesma regra. Por isso, o valor pago num recebimento =
+//      parcelas baixadas + saldos pagos - saldo novo gerado.
 //  - cadclien: cadastro do cliente; prc_juros = % ao dia (juros simples), prc_multa = % de multa.
 //      O Trier só cobra juros depois de alguns dias de atraso (carência, ajustável no config.json).
 //  - cadabcai: abertura/fechamento de cada caixa.
@@ -18,6 +23,45 @@ const nomeSql = `upper(translate(cl.nom_cliente, '${SEM_ACENTO_DE}', '${SEM_ACEN
 
 const telefone = `coalesce(nullif(trim(cl.num_celular), ''), nullif(trim(cl.num_fone), ''))`;
 const r2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
+
+// Tudo o que está em aberto: parcelas + saldos devedores (o Postgres aplica os filtros de fora em cada parte)
+const ABERTOS = `(
+  SELECT c.cod_rede, c.cod_filial, c.cod_cliente, false AS saldo, c.num_nota AS nota, c.num_parcela AS parcela,
+         c.qtd_parcelas AS total_parcelas, c.tip_venda AS tipo, c.dat_emissao AS emissao, c.dat_vencto AS vencimento,
+         c.vlr_receber AS valor, NULL::int AS recibo_origem
+    FROM cadcredi c WHERE c.dat_receb IS NULL
+  UNION ALL
+  SELECT s.cod_rede, s.cod_filial, s.cod_cliente, true, NULL, NULL, NULL, NULL, s.dat_refer, s.dat_vencto,
+         s.vlr_receber, s.num_seqrecorig
+    FROM cadslddv s WHERE s.dat_receb IS NULL AND s.dat_cancreceb IS NULL)`;
+
+// Tudo o que foi baixado (parcelas e saldos pagos), uma linha por item, para agrupar por recebimento
+const BAIXAS = (filtroC, filtroS) => `(
+  SELECT c.cod_rede, c.cod_filial, c.num_seqrec AS recibo, c.dat_receb AS data, c.hor_receb AS hora, c.num_caixa AS caixa,
+         c.cod_cliente, false AS saldo, c.vlr_receber AS valor, coalesce(c.vlr_jurosrec, 0) AS juros, coalesce(c.vlr_multa, 0) AS multa,
+         coalesce(c.vlr_descrec, 0) AS desconto, coalesce(c.vlr_recebido, 0) AS baixado, c.dat_cancreceb IS NOT NULL AS cancelado
+    FROM cadcredi c WHERE c.dat_receb IS NOT NULL AND ${filtroC}
+  UNION ALL
+  SELECT s.cod_rede, s.cod_filial, s.num_seqrec, s.dat_receb, s.hor_receb, s.num_caixareceb, s.cod_cliente, true, s.vlr_receber,
+         coalesce(s.vlr_juros, 0), coalesce(s.vlr_multa, 0), coalesce(s.vlr_descto, 0), coalesce(s.vlr_recebido, 0),
+         s.dat_cancreceb IS NOT NULL
+    FROM cadslddv s WHERE s.dat_receb IS NOT NULL AND ${filtroS})`;
+
+// Agrupa as baixas por recebimento e desconta o saldo novo que ficou: "recebido" = o que o cliente pagou de fato
+const POR_RECIBO = (baixas) => `
+  SELECT m.recibo, min(m.data) AS data, min(m.hora)::text AS hora, max(m.caixa) AS caixa,
+         m.cod_cliente AS "clienteId", cl.nom_cliente AS cliente,
+         count(*) FILTER (WHERE NOT m.saldo) AS parcelas, count(*) FILTER (WHERE m.saldo) AS "saldosPagos",
+         sum(m.valor) AS original, sum(m.juros) AS juros, sum(m.multa) AS multa, sum(m.desconto) AS desconto,
+         sum(m.baixado) AS baixado, g.gerado AS "saldoGerado", sum(m.baixado) - g.gerado AS recebido,
+         bool_or(m.cancelado) AS cancelado
+    FROM ${baixas} m
+    LEFT JOIN cadclien cl ON cl.cod_rede = m.cod_rede AND cl.cod_cliente = m.cod_cliente
+    LEFT JOIN LATERAL (
+      SELECT coalesce(sum(s.vlr_receber), 0) AS gerado FROM cadslddv s
+       WHERE s.cod_rede = m.cod_rede AND s.cod_filial = m.cod_filial AND s.num_seqrecorig = m.recibo AND s.dat_cancreceb IS NULL
+    ) g ON true
+   GROUP BY m.recibo, m.cod_cliente, cl.nom_cliente, g.gerado`;
 
 // Juros e multa estimados para hoje, do jeito que o Trier calcula
 export function encargos(p, cliente, carencia) {
@@ -41,9 +85,9 @@ export async function buscarClientes(pool, { rede, filial }, busca) {
            coalesce(s.aberto, 0) AS aberto, coalesce(s.vencido, 0) AS vencido, coalesce(s.parcelas, 0) AS parcelas
       FROM cadclien cl
       LEFT JOIN LATERAL (
-        SELECT sum(c.vlr_receber) AS aberto, sum(c.vlr_receber) FILTER (WHERE c.dat_vencto < current_date) AS vencido, count(*) AS parcelas
-          FROM cadcredi c
-         WHERE c.cod_rede = cl.cod_rede AND c.cod_cliente = cl.cod_cliente AND c.cod_filial = $2 AND c.dat_receb IS NULL
+        SELECT sum(a.valor) AS aberto, sum(a.valor) FILTER (WHERE a.vencimento < current_date) AS vencido, count(*) AS parcelas
+          FROM ${ABERTOS} a
+         WHERE a.cod_rede = cl.cod_rede AND a.cod_cliente = cl.cod_cliente AND a.cod_filial = $2
       ) s ON true
      WHERE cl.cod_rede = $1
        AND (${nomeSql} LIKE $3 OR cl.cod_cliente = $4 OR ($5 <> '' AND length($5) >= 6 AND regexp_replace(coalesce(cl.num_cnpj, ''), '\\D', '', 'g') LIKE $5 || '%'))
@@ -61,37 +105,30 @@ export async function cliente(pool, { rede, filial, carencia }, id) {
       FROM cadclien cl WHERE cl.cod_rede = $1 AND cl.cod_cliente = $2`, [rede, id]);
   if (!cli) return null;
 
+  // Parcelas e saldos devedores em aberto (saldo = true: sobra de um pagamento parcial)
   const { rows: parcelas } = await pool.query(`
-    SELECT c.num_nota AS nota, c.num_parcela AS parcela, c.qtd_parcelas AS "totalParcelas", c.tip_venda AS tipo,
-           c.dat_emissao AS emissao, c.dat_vencto AS vencimento, c.vlr_receber AS valor, (current_date - c.dat_vencto) AS dias
-      FROM cadcredi c
-     WHERE c.cod_rede = $1 AND c.cod_filial = $2 AND c.cod_cliente = $3 AND c.dat_receb IS NULL
-     ORDER BY c.dat_vencto, c.num_nota, c.num_parcela`, [rede, filial, id]);
+    SELECT a.saldo, a.nota, a.parcela, a.total_parcelas AS "totalParcelas", a.tipo, a.emissao, a.vencimento, a.valor,
+           a.recibo_origem AS "reciboOrigem", (current_date - a.vencimento) AS dias
+      FROM ${ABERTOS} a
+     WHERE a.cod_rede = $1 AND a.cod_filial = $2 AND a.cod_cliente = $3
+     ORDER BY a.vencimento, a.saldo DESC, a.nota, a.parcela`, [rede, filial, id]);
   for (const p of parcelas) Object.assign(p, encargos(p, cli, carencia));
 
   // Últimos pagamentos, para conferir com o que o cliente diz
   const { rows: pagamentos } = await pool.query(`
-    SELECT c.num_seqrec AS recibo, min(c.dat_receb) AS data, min(c.hor_receb)::text AS hora, count(*) AS parcelas,
-           sum(c.vlr_recebido) AS recebido, sum(coalesce(c.vlr_jurosrec, 0) + coalesce(c.vlr_multa, 0)) AS encargos
-      FROM cadcredi c
-     WHERE c.cod_rede = $1 AND c.cod_filial = $2 AND c.cod_cliente = $3 AND c.dat_receb IS NOT NULL AND c.dat_cancreceb IS NULL
-     GROUP BY c.num_seqrec ORDER BY min(c.dat_receb) DESC, min(c.hor_receb) DESC LIMIT 6`, [rede, filial, id]);
+    ${POR_RECIBO(BAIXAS('c.cod_rede = $1 AND c.cod_filial = $2 AND c.cod_cliente = $3',
+      's.cod_rede = $1 AND s.cod_filial = $2 AND s.cod_cliente = $3'))}
+    HAVING NOT bool_or(m.cancelado)
+    ORDER BY min(m.data) DESC, min(m.hora) DESC LIMIT 6`, [rede, filial, id]);
 
   return { cliente: cli, parcelas, pagamentos, carencia };
 }
 
 export async function recebimentos(pool, { rede, filial }, de, ate) {
   const { rows } = await pool.query(`
-    SELECT c.num_seqrec AS recibo, min(c.dat_receb) AS data, min(c.hor_receb)::text AS hora, c.num_caixa AS caixa,
-           c.cod_cliente AS "clienteId", cl.nom_cliente AS cliente, count(*) AS parcelas,
-           sum(c.vlr_receber) AS original, sum(coalesce(c.vlr_jurosrec, 0)) AS juros, sum(coalesce(c.vlr_multa, 0)) AS multa,
-           sum(coalesce(c.vlr_descrec, 0)) AS desconto, sum(coalesce(c.vlr_recebido, 0)) AS recebido,
-           bool_or(c.dat_cancreceb IS NOT NULL) AS cancelado
-      FROM cadcredi c
-      LEFT JOIN cadclien cl ON cl.cod_rede = c.cod_rede AND cl.cod_cliente = c.cod_cliente
-     WHERE c.cod_rede = $1 AND c.cod_filial = $2 AND c.dat_receb BETWEEN $3 AND $4
-     GROUP BY c.num_seqrec, c.num_caixa, c.cod_cliente, cl.nom_cliente
-     ORDER BY min(c.dat_receb), min(c.hor_receb)`, [rede, filial, de, ate]);
+    ${POR_RECIBO(BAIXAS('c.cod_rede = $1 AND c.cod_filial = $2 AND c.dat_receb BETWEEN $3 AND $4',
+      's.cod_rede = $1 AND s.cod_filial = $2 AND s.dat_receb BETWEEN $3 AND $4'))}
+    ORDER BY min(m.data), min(m.hora)`, [rede, filial, de, ate]);
 
   const numeros = [...new Set(rows.map((r) => r.caixa).filter((n) => n != null))];
   const { rows: caixas } = numeros.length ? await pool.query(`
@@ -103,14 +140,14 @@ export async function recebimentos(pool, { rede, filial }, de, ate) {
 
 export async function atrasados(pool, { rede, filial }, diasMin = 1) {
   const { rows } = await pool.query(`
-    SELECT c.cod_cliente AS id, cl.nom_cliente AS nome, ${telefone} AS telefone, cl.flg_bloqueado = 'S' AS bloqueado,
-           count(*) AS parcelas, sum(c.vlr_receber) AS vencido, min(c.dat_vencto) AS "maisAntigo",
-           (current_date - min(c.dat_vencto)) AS dias, cl.dat_ultreceb AS "ultimoPagamento"
-      FROM cadcredi c
-      LEFT JOIN cadclien cl ON cl.cod_rede = c.cod_rede AND cl.cod_cliente = c.cod_cliente
-     WHERE c.cod_rede = $1 AND c.cod_filial = $2 AND c.dat_receb IS NULL AND c.dat_vencto <= current_date - $3::int
-     GROUP BY c.cod_cliente, cl.nom_cliente, cl.num_celular, cl.num_fone, cl.flg_bloqueado, cl.dat_ultreceb
-     ORDER BY min(c.dat_vencto)`, [rede, filial, diasMin]);
+    SELECT a.cod_cliente AS id, cl.nom_cliente AS nome, ${telefone} AS telefone, cl.flg_bloqueado = 'S' AS bloqueado,
+           count(*) AS parcelas, count(*) FILTER (WHERE a.saldo) AS saldos, sum(a.valor) AS vencido, min(a.vencimento) AS "maisAntigo",
+           (current_date - min(a.vencimento)) AS dias, cl.dat_ultreceb AS "ultimoPagamento"
+      FROM ${ABERTOS} a
+      LEFT JOIN cadclien cl ON cl.cod_rede = a.cod_rede AND cl.cod_cliente = a.cod_cliente
+     WHERE a.cod_rede = $1 AND a.cod_filial = $2 AND a.vencimento <= current_date - $3::int
+     GROUP BY a.cod_cliente, cl.nom_cliente, cl.num_celular, cl.num_fone, cl.flg_bloqueado, cl.dat_ultreceb
+     ORDER BY min(a.vencimento)`, [rede, filial, diasMin]);
   return rows;
 }
 

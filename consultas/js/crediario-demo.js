@@ -6,7 +6,7 @@ const dia = (n) => diasAtras(n); // n > 0 = passado, n < 0 = futuro
 
 const CLIENTES = [
   { id: 1201, nome: 'MARIA APARECIDA DA SILVA', cpf: '123.456.789-00', telefone: '(11) 98888-1111', prcJuros: 0.16, prcMulta: 0, limite: 500,
-    parcelas: [[35, 89.9, 4021, 2, 2], [5, 64.5, 4188, 1, 1], [-25, 120.4, 4302, 1, 2], [-55, 120.4, 4302, 2, 2]] },
+    parcelas: [[35, 89.9, 4021, 2, 2], [5, 64.5, 4188, 1, 1], [-25, 120.4, 4302, 1, 2], [-55, 120.4, 4302, 2, 2], [20, 36.28, 'saldo']] },
   { id: 877, nome: 'JOSE CARLOS PEREIRA', cpf: '987.654.321-00', telefone: '(11) 97777-2222', prcJuros: 0.16, prcMulta: 0, limite: 800,
     parcelas: [[95, 210, 3650, 1, 1], [64, 45.8, 3810, 1, 1]] },
   { id: 1530, nome: 'ANA PAULA SOUZA', cpf: '111.222.333-44', telefone: '(11) 96666-3333', prcJuros: 0.1, prcMulta: 0, limite: 300,
@@ -20,7 +20,9 @@ function parcelasDe(c) {
   return c.parcelas.map(([atraso, valor, nota, parcela, total]) => {
     const dias = atraso;
     const juros = dias > CARENCIA ? Math.round(valor * c.prcJuros / 100 * dias * 100) / 100 : 0;
-    return { nota, parcela, totalParcelas: total, tipo: 'V', emissao: dia(atraso + 30 * parcela), vencimento: dia(atraso), valor, dias, juros, multa: 0 };
+    // Saldo devedor: o que sobrou de um pagamento parcial
+    if (nota === 'saldo') return { saldo: true, emissao: dia(atraso), vencimento: dia(atraso), valor, dias, juros, multa: 0, reciboOrigem: 85990 };
+    return { saldo: false, nota, parcela, totalParcelas: total, tipo: 'V', emissao: dia(atraso + 30 * parcela), vencimento: dia(atraso), valor, dias, juros, multa: 0 };
   }).sort((a, b) => a.vencimento.localeCompare(b.vencimento));
 }
 
@@ -52,8 +54,9 @@ export function demoCrediario(caminho) {
       cliente: { id: c.id, nome: c.nome, cpf: c.cpf, telefone: c.telefone, bloqueado: !!c.bloqueado, ativo: true, limite: c.limite,
         prcJuros: c.prcJuros, prcMulta: c.prcMulta, ultimoPagamento: dia(20), obs1: c.bloqueado ? 'SÓ À VISTA ATÉ ACERTAR' : '' },
       parcelas: parcelasDe(c),
-      pagamentos: [{ recibo: 85990, data: dia(20), hora: '10:15:00', parcelas: 2, recebido: 130.4, encargos: 0 },
-        { recibo: 85512, data: dia(52), hora: '17:02:00', parcelas: 1, recebido: 96.1, encargos: 3.4 }],
+      pagamentos: [
+        { recibo: 85990, data: dia(20), hora: '10:15:00', parcelas: 2, saldosPagos: 0, baixado: 136.28, juros: 0, multa: 0, saldoGerado: 36.28, recebido: 100 },
+        { recibo: 85512, data: dia(52), hora: '17:02:00', parcelas: 1, saldosPagos: 0, baixado: 96.1, juros: 3.4, multa: 0, saldoGerado: 0, recebido: 96.1 }],
       carencia: CARENCIA,
     };
   }
@@ -62,8 +65,9 @@ export function demoCrediario(caminho) {
     const nomes = new Map(CLIENTES.map((c) => [c.id, c.nome]));
     return {
       recebimentos: RECEBIMENTOS.map(([hora, cli, parcelas, original, juros, recebido, cancelado], i) => ({
-        recibo: 86000 + i, data, hora: `${hora}:00`, caixa: 3640, clienteId: cli, cliente: nomes.get(cli), parcelas,
-        original, juros, multa: 0, desconto: 0, recebido, cancelado: !!cancelado })),
+        recibo: 86000 + i, data, hora: `${hora}:00`, caixa: 3640, clienteId: cli, cliente: nomes.get(cli), parcelas, saldosPagos: i === 5 ? 1 : 0,
+        original, juros, multa: 0, desconto: 0, baixado: recebido, saldoGerado: i === 3 ? 22.48 : 0, recebido: i === 3 ? recebido - 22.48 : recebido,
+        cancelado: !!cancelado })),
       caixas: [{ caixa: 3640, abertoEm: diasAtras(1), abertoAs: '20:58:10', fechadoEm: null, fechadoAs: null }],
     };
   }
@@ -72,7 +76,7 @@ export function demoCrediario(caminho) {
     return CLIENTES.map((c) => {
       const v = parcelasDe(c).filter((p) => p.dias >= min);
       if (!v.length) return null;
-      return { id: c.id, nome: c.nome, telefone: c.telefone, bloqueado: !!c.bloqueado, parcelas: v.length,
+      return { id: c.id, nome: c.nome, telefone: c.telefone, bloqueado: !!c.bloqueado, parcelas: v.length, saldos: v.filter((p) => p.saldo).length,
         vencido: Math.round(v.reduce((s, p) => s + p.valor, 0) * 100) / 100, maisAntigo: v[0].vencimento, dias: v[0].dias, ultimoPagamento: dia(20) };
     }).filter(Boolean).sort((a, b) => b.dias - a.dias);
   }

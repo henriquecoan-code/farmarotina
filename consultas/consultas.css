@@ -39,6 +39,10 @@
 .cred-parcelas input[type="checkbox"] { width: 18px; height: 18px; margin: 0; }
 .mini-tabela tr.cancelado td { color: var(--mudo); text-decoration: line-through; }
 .mini-tabela tr.cancelado td small { text-decoration: none; }
+.cred-saldo { color: var(--atencao); font-weight: 600; }
+.mini-tabela td small.cred-saldo { color: var(--atencao); }
+.cred-corpo .so-celular { display: none; }
+@media (max-width: 520px) { .cred-corpo .so-celular { display: block; } }
 .cred-ponte { flex-wrap: wrap; }
 .cred-ponte code { font-size: 13px; }
 /* ---------- produtos ---------- */
