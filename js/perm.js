@@ -14,11 +14,12 @@ export const MODULOS = [
   // Consultas ao sistema da farmácia (Trier), na página separada consultas/consulta.html
   { id: 'crediario', nome: 'Crediário (consulta no Trier)', grupo: 'consultas' },
   { id: 'produtos', nome: 'Produtos (consulta no Trier)', grupo: 'consultas' },
+  { id: 'orcamento', nome: 'Orçamento (preços do Trier, sem custo)', grupo: 'consultas' },
 ];
 
 export const PERFIS = {
   'Farmacêutico': MODULOS.map((m) => m.id),
-  'Atendente': ['clientes', 'temperatura', 'atendimento', 'trocas', 'notas', 'fornecedores', 'pops'],
+  'Atendente': ['clientes', 'temperatura', 'atendimento', 'trocas', 'notas', 'fornecedores', 'pops', 'orcamento'],
 };
 
 let perfil = null;

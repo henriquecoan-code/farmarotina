@@ -6,6 +6,7 @@ import { iniciarSubsite } from '../../js/subsite.js';
 import { esc, icone } from '../../js/util.js';
 import { demoCrediario } from './crediario-demo.js';
 import { demoProdutos } from './produtos-demo.js';
+import { demoOrcamento } from './orcamento-demo.js';
 
 // Módulos de consulta. Para criar um novo: página .html + js nesta pasta, rota na ponte e um item aqui
 // (e o módulo em js/perm.js com grupo: 'consultas').
@@ -14,6 +15,8 @@ export const CONSULTAS = [
     desc: 'O que o cliente tem em aberto, conferência dos recebimentos e clientes em atraso.' },
   { id: 'produtos', modulo: 'produtos', href: 'produtos.html', icone: 'pill', nome: 'Produtos',
     desc: 'Preço, custo, margem e estoque, produtos com o mesmo DCB e as compras e vendas de cada um.' },
+  { id: 'orcamento', modulo: 'orcamento', href: 'orcamento.html', icone: 'file-dollar', nome: 'Orçamento',
+    desc: 'Monte um orçamento com os preços do sistema, valores no crediário e à vista, e envie pelo WhatsApp.' },
 ];
 
 const PAGINAS = [
@@ -28,7 +31,7 @@ export function iniciar({ atual, modulos, titulo, montar }) {
 export class PonteDesligada extends Error {}
 
 // Dados fictícios no modo demonstração, para testar sem a ponte
-const DEMOS = { crediario: demoCrediario, produtos: demoProdutos };
+const DEMOS = { crediario: demoCrediario, produtos: demoProdutos, orcamento: demoOrcamento };
 
 export async function api(caminho, demo) {
   if (DEMO) {

@@ -166,6 +166,14 @@ service cloud.firestore {
       }
     }
 
+    // Orçamentos (página consultas/orcamento.html)
+    match /orcamentos/{id} {
+      allow read: if pode('orcamento');
+      allow create: if pode('orcamento') && criacaoValida();
+      allow update: if pode('orcamento') && (edicaoValida() || soContador());
+      allow delete: if admin();
+    }
+
     match /notas/{id} {
       allow read: if pode('notas');
       allow create: if pode('notas') && criacaoValida();

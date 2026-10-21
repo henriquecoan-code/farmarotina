@@ -248,3 +248,19 @@ export async function produtoInfo(pool, { rede, filial }, id, dias = 90) {
   [rede, filial, id, dias]);
   return { dias, totais, compras, vendas };
 }
+
+// ---------- orçamento ----------
+// Busca para a tela de orçamento: só o que o balcão precisa (preço cheio, preço com o desconto padrão, desconto máximo
+// do cadastro e estoque). Não devolve custo nem margem, porque o orçamento é liberado também para atendentes.
+export async function buscarProdutosOrcamento(pool, opcoes, busca) {
+  const lista = await buscarProdutos(pool, opcoes, busca, false);
+  if (!lista.length) return [];
+  const { rows } = await pool.query(
+    'SELECT cod_reduzido AS id, prc_descmax AS "descontoMaximo" FROM cadprodu WHERE cod_rede = $1 AND cod_reduzido = ANY($2::int[])',
+    [opcoes.rede, lista.map((p) => p.id)]);
+  const maximo = new Map(rows.map((r) => [r.id, r.descontoMaximo]));
+  return lista.map((p) => ({
+    id: p.id, nome: p.nome, laboratorio: p.laboratorio, concentracao: p.concentracao, quantidade: p.quantidade,
+    estoque: p.estoque, pmc: p.pmc, venda: p.venda, desconto: p.desconto, descontoMaximo: maximo.get(p.id) ?? null,
+  }));
+}

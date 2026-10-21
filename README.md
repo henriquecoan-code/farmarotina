@@ -104,6 +104,14 @@ Item **Consultas Trier** no menu → `consultas/consulta.html`, uma área à par
 - tabela **Mesmo DCB** com os equivalentes e os filtros **Mesma concentração**, **Mesma apresentação** e **Com estoque**;
 - botão **Inf.** em cada produto: período editável (padrão **últimos 90 dias**, com atalhos 30/90/180/365), totais comprado e vendido e a média de venda por mês, e lado a lado as compras (fornecedor, desconto, custo) e as vendas **com o cliente** (link para o Crediário) do período.
 
+**Orçamento** (`consultas/orcamento.html`) — para o balcão (módulo próprio, **sem custo nem margem**, já no perfil Atendente):
+- busca os produtos no Trier pela ponte (rota `/orcamento/produtos`), com estoque, PMC e o preço com o desconto padrão;
+- **Crediário** = preço com o desconto padrão do sistema × quantidade; **À vista** = crediário com um desconto extra, editável **por item** ou para **todos de uma vez** ("Desconto à vista para todos os itens");
+- avisa quando o desconto total sobre o PMC passa do **desconto máximo do cadastro**;
+- **item avulso** (produto fora do sistema ou com a ponte desligada), validade (3, 7, 15 ou 30 dias) e observações;
+- **Enviar pelo WhatsApp** com a mensagem pronta (itens, crediário, à vista e validade; sem telefone, o WhatsApp abre para escolher o contato) e **Imprimir**;
+- os orçamentos ficam **salvos no FarmaRotina** (coleção `orcamentos`), com situação (Aberto, Aprovado, Não aprovado, "Vencido" quando passa da validade), **Duplicar** e **Atualizar preços** para reaproveitar um orçamento antigo.
+
 **Criar outro módulo de consulta:** consulta SQL em `ponte/consultas.js` + rota em `ponte/servidor.js`; página `.html` + `.js` em `consultas/` usando `iniciar` e `api` de `consultas/js/comum.js`; item em `CONSULTAS` (mesmo arquivo); módulo em `js/perm.js` com `grupo: 'consultas'` (ele já entra no item do menu).
 
 **Instalar a ponte num computador da farmácia:**

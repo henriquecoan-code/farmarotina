@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import { lerConfig, criarPool, CAMINHO_CONFIG } from './banco.js';
 import * as consultas from './consultas.js';
 
-const VERSAO = '1.0';
+const VERSAO = '1.1';
 const cfg = lerConfig();
 const PORTA = cfg.portaPonte || 3790;
 const PROJETO = cfg.projetoFirebase || 'farmarotina-ed7c3';
@@ -77,11 +77,14 @@ async function responder(url, req) {
     return { ok: true, versao: VERSAO, filial: opcoes.filial, banco };
   }
   // Permissão exigida por cada rota (módulo do FarmaRotina)
-  const ROTAS = { clientes: 'crediario', recebimentos: 'crediario', atrasados: 'crediario', produtos: 'produtos' };
-  const NOMES = { crediario: 'o Crediário', produtos: 'a consulta de Produtos' };
+  const ROTAS = { clientes: 'crediario', recebimentos: 'crediario', atrasados: 'crediario', produtos: 'produtos', orcamento: 'orcamento' };
+  const NOMES = { crediario: 'o Crediário', produtos: 'a consulta de Produtos', orcamento: 'o Orçamento' };
   const modulo = ROTAS[partes[0]];
   if (!modulo) throw new ErroHttp(404, 'Endereço não encontrado.');
   await autorizar(req, modulo, NOMES[modulo]);
+  if (partes[0] === 'orcamento' && partes[1] === 'produtos') {
+    return consultas.buscarProdutosOrcamento(pool, opcoes, url.searchParams.get('busca') || '');
+  }
   if (partes[0] === 'produtos' && !partes[1]) {
     return consultas.buscarProdutos(pool, opcoes, url.searchParams.get('busca') || '', url.searchParams.get('inativos') === '1');
   }

@@ -4,14 +4,14 @@ import { agoraLocal, diasAtras, hoje } from './util.js';
 import { calcularProxima } from './modulos/saude.js';
 import { ocorrencia } from './modulos/rotinas.js';
 
-const CHAVE = 'farmarotina-demo-v9';
+const CHAVE = 'farmarotina-demo-v10';
 const SESSAO = 'farmarotina-demo-sessao';
-const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'trocas', 'pops', 'rotinas', 'pedido', 'historico'];
+const TODOS = ['clientes', 'saude', 'temperatura', 'notas', 'fornecedores', 'atendimento', 'trocas', 'pops', 'rotinas', 'pedido', 'historico', 'crediario', 'produtos', 'orcamento'];
 
 export const USUARIOS_DEMO = {
   'admin@demo': { nome: 'Ana (admin)', papel: 'admin', modulos: [], ativo: true },
   'farmaceutico@demo': { nome: 'Bruno (farmacêutico)', papel: 'usuario', modulos: TODOS, ativo: true },
-  'atendente@demo': { nome: 'Carla (atendente)', papel: 'usuario', modulos: ['clientes', 'temperatura', 'atendimento', 'trocas', 'notas', 'fornecedores', 'pops'], ativo: true },
+  'atendente@demo': { nome: 'Carla (atendente)', papel: 'usuario', modulos: ['clientes', 'temperatura', 'atendimento', 'trocas', 'notas', 'fornecedores', 'pops', 'orcamento'], ativo: true },
 };
 
 const novoId = () => Math.random().toString(36).slice(2, 12);
