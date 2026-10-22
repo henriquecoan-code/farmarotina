@@ -30,7 +30,8 @@ function resumo(c) {
   const ps = parcelasDe(c);
   const soma = (l) => Math.round(l.reduce((s, p) => s + p.valor, 0) * 100) / 100;
   return { id: c.id, nome: c.nome, cpf: c.cpf, telefone: c.telefone, bloqueado: !!c.bloqueado, ativo: true,
-    aberto: soma(ps), vencido: soma(ps.filter((p) => p.dias > 0)), parcelas: ps.length };
+    aberto: soma(ps), vencido: soma(ps.filter((p) => p.dias > 0)), parcelas: ps.length,
+    comJuros: Math.round(ps.reduce((s, p) => s + p.valor + p.juros + p.multa, 0) * 100) / 100 };
 }
 
 const RECEBIMENTOS = [
@@ -77,7 +78,8 @@ export function demoCrediario(caminho) {
       const v = parcelasDe(c).filter((p) => p.dias >= min);
       if (!v.length) return null;
       return { id: c.id, nome: c.nome, telefone: c.telefone, bloqueado: !!c.bloqueado, parcelas: v.length, saldos: v.filter((p) => p.saldo).length,
-        vencido: Math.round(v.reduce((s, p) => s + p.valor, 0) * 100) / 100, maisAntigo: v[0].vencimento, dias: v[0].dias, ultimoPagamento: dia(20) };
+        vencido: Math.round(v.reduce((s, p) => s + p.valor, 0) * 100) / 100,
+        comJuros: Math.round(v.reduce((s, p) => s + p.valor + p.juros + p.multa, 0) * 100) / 100, maisAntigo: v[0].vencimento, dias: v[0].dias, ultimoPagamento: dia(20) };
     }).filter(Boolean).sort((a, b) => b.dias - a.dias);
   }
   throw new Error('Endereço não encontrado.');

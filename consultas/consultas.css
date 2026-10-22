@@ -192,3 +192,48 @@
   .orc-resultado { grid-template-columns: minmax(0, 1fr) auto; }
   .orc-r-est { display: none; }
 }
+
+/* "com juros" vermelho também dentro das tabelas (o texto pequeno da tabela é cinza por padrão) */
+.mini-tabela td small.cred-vencido { color: var(--perigo); font-weight: 600; }
+
+/* ---------- DRE ---------- */
+.dre { display: flex; flex-direction: column; gap: 14px; }
+.dre-abas { max-width: 560px; }
+.dre-abas span { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.dre-corpo { display: flex; flex-direction: column; gap: 14px; }
+.dre-botoes { align-items: center; }
+.dre-mes { width: auto; min-height: 40px; }
+.dre-ano span { padding: 0 12px; white-space: nowrap; }
+.dre-titulo-mes { margin: 0; }
+.dre-grade { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+.dre-cartao h2, .dre-ajustes h2 { margin: 0; font-size: 17px; display: flex; align-items: center; gap: 6px; }
+.dre-cartao { display: flex; flex-direction: column; gap: 6px; }
+.dre-tabela td small { display: block; font-size: 11px; }
+.dre-tabela tr.dre-total td { font-weight: 700; background: var(--superficie-2); border-top: 1px solid var(--borda-forte); }
+.dre-tabela tr.dre-abre { cursor: pointer; }
+.dre-tabela tr.dre-abre td:first-child .ti { font-size: 14px; margin-right: 2px; transition: transform .15s; color: var(--mudo); }
+.dre-tabela tr.dre-abre.aberta td:first-child .ti { transform: rotate(90deg); }
+.dre-tabela tr.dre-abre:hover td { background: var(--pri-claro); }
+.dre-tabela tr.dre-itens > td { padding: 4px 0 8px 18px; background: transparent; }
+.dre-tabela tr.dre-itens .mini-tabela { width: 100%; }
+.dre-ajustes { display: flex; flex-direction: column; gap: 8px; }
+.dre-ajustes-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.dre-ajustes td small, .dre-class td small { display: block; font-size: 11px; }
+.dre-rolagem { overflow-x: auto; padding: 0; }
+.dre-anual { min-width: 900px; }
+.dre-anual th:first-child, .dre-anual td:first-child { position: sticky; left: 0; background: var(--superficie); white-space: nowrap; z-index: 1; }
+.dre-anual tr.dre-total td:first-child { background: var(--superficie-2); }
+.dre-anual tr.dre-caixa td { border-top: 2px solid var(--borda-forte); }
+.dre-anual th a { color: inherit; }
+.dre-class { width: 100%; }
+.dre-linha-btn { text-align: left; }
+small.dre-classificada { color: var(--ok); font-weight: 600; }
+.dre-nota { margin: 0; }
+.dre-nota .ti { vertical-align: -2px; }
+@media (max-width: 860px) { .dre-grade { grid-template-columns: 1fr; } }
+@media print {
+  .dre-abas, .dre-botoes, .dre-ajustes button, .dre-tabela button, .dre .alerta .btn { display: none !important; }
+  .dre-tabela tr.dre-itens { display: none; }
+  .dre-grade { grid-template-columns: 1fr 1fr; }
+  .dre-anual { min-width: 0; font-size: 9px; }
+}

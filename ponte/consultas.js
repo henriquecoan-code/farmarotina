@@ -73,7 +73,14 @@ export function encargos(p, cliente, carencia) {
   };
 }
 
-export async function buscarClientes(pool, { rede, filial }, busca) {
+// Valor da parcela + juros e multa até hoje, igual ao encargos() acima (só depois da carência, 2 casas por parcela).
+// "a" = parcela em aberto, "cl" = cadclien; carencia = o parâmetro SQL com os dias de carência (ex.: '$6').
+const comJurosSql = (carencia) => `a.valor + CASE WHEN (current_date - a.vencimento) > ${carencia}
+                 THEN round((a.valor * coalesce(cl.prc_juros, 0) / 100 * (current_date - a.vencimento))::numeric, 2)
+                    + round((a.valor * coalesce(cl.prc_multa, 0) / 100)::numeric, 2)
+                 ELSE 0 END`;
+
+export async function buscarClientes(pool, { rede, filial, carencia = 10 }, busca) {
   const texto = semAcento(busca).trim().toUpperCase();
   if (texto.length < 2) return [];
   const digitos = texto.replace(/\D/g, '');
@@ -82,17 +89,19 @@ export async function buscarClientes(pool, { rede, filial }, busca) {
   const { rows } = await pool.query(`
     SELECT cl.cod_cliente AS id, cl.nom_cliente AS nome, cl.num_cnpj AS cpf, ${telefone} AS telefone,
            cl.flg_bloqueado = 'S' AS bloqueado, coalesce(cl.flg_ativo, 'S') <> 'N' AS ativo,
-           coalesce(s.aberto, 0) AS aberto, coalesce(s.vencido, 0) AS vencido, coalesce(s.parcelas, 0) AS parcelas
+           coalesce(s.aberto, 0) AS aberto, coalesce(s.vencido, 0) AS vencido, coalesce(s.parcelas, 0) AS parcelas,
+           coalesce(s.com_juros, 0) AS "comJuros"
       FROM cadclien cl
       LEFT JOIN LATERAL (
-        SELECT sum(a.valor) AS aberto, sum(a.valor) FILTER (WHERE a.vencimento < current_date) AS vencido, count(*) AS parcelas
+        SELECT sum(a.valor) AS aberto, sum(a.valor) FILTER (WHERE a.vencimento < current_date) AS vencido, count(*) AS parcelas,
+               sum(${comJurosSql('$6')}) AS com_juros
           FROM ${ABERTOS} a
          WHERE a.cod_rede = cl.cod_rede AND a.cod_cliente = cl.cod_cliente AND a.cod_filial = $2
       ) s ON true
      WHERE cl.cod_rede = $1
        AND (${nomeSql} LIKE $3 OR cl.cod_cliente = $4 OR ($5 <> '' AND length($5) >= 6 AND regexp_replace(coalesce(cl.num_cnpj, ''), '\\D', '', 'g') LIKE $5 || '%'))
      ORDER BY (coalesce(s.parcelas, 0) = 0), cl.nom_cliente
-     LIMIT 30`, [rede, filial, nome, codigo, digitos]);
+     LIMIT 30`, [rede, filial, nome, codigo, digitos, carencia]);
   return rows;
 }
 
@@ -138,16 +147,16 @@ export async function recebimentos(pool, { rede, filial }, de, ate) {
   return { recebimentos: rows, caixas };
 }
 
-export async function atrasados(pool, { rede, filial }, diasMin = 1) {
+export async function atrasados(pool, { rede, filial, carencia = 10 }, diasMin = 1) {
   const { rows } = await pool.query(`
     SELECT a.cod_cliente AS id, cl.nom_cliente AS nome, ${telefone} AS telefone, cl.flg_bloqueado = 'S' AS bloqueado,
-           count(*) AS parcelas, count(*) FILTER (WHERE a.saldo) AS saldos, sum(a.valor) AS vencido, min(a.vencimento) AS "maisAntigo",
+           count(*) AS parcelas, count(*) FILTER (WHERE a.saldo) AS saldos, sum(a.valor) AS vencido, sum(${comJurosSql('$4')}) AS "comJuros", min(a.vencimento) AS "maisAntigo",
            (current_date - min(a.vencimento)) AS dias, cl.dat_ultreceb AS "ultimoPagamento"
       FROM ${ABERTOS} a
       LEFT JOIN cadclien cl ON cl.cod_rede = a.cod_rede AND cl.cod_cliente = a.cod_cliente
      WHERE a.cod_rede = $1 AND a.cod_filial = $2 AND a.vencimento <= current_date - $3::int
      GROUP BY a.cod_cliente, cl.nom_cliente, cl.num_celular, cl.num_fone, cl.flg_bloqueado, cl.dat_ultreceb
-     ORDER BY min(a.vencimento)`, [rede, filial, diasMin]);
+     ORDER BY min(a.vencimento)`, [rede, filial, diasMin, carencia]);
   return rows;
 }
 
@@ -263,4 +272,80 @@ export async function buscarProdutosOrcamento(pool, opcoes, busca) {
     id: p.id, nome: p.nome, laboratorio: p.laboratorio, concentracao: p.concentracao, quantidade: p.quantidade,
     estoque: p.estoque, pmc: p.pmc, venda: p.venda, desconto: p.desconto, descontoMaximo: maximo.get(p.id) ?? null,
   }));
+}
+
+// ---------- DRE ----------
+// Números do mês para o DRE (competência) e o fluxo de caixa, de `de` a `ate` (meses 'AAAA-MM', inclusive).
+//  - Vendas: cadcvend, tip_venda 'V' = venda, 'D' = devolução de cliente (está em caddevol), 'O' = saída para fornecedor
+//    ou filial (não é receita). tot_bruto sai pelo PMC; tot_nota é o valor vendido.
+//  - CMV: itens das vendas × custo médio do mês (sumarizacao_mensal_custo_medio, só existe de jun/2026 em diante); sem ele,
+//    o custo da última compra antes da venda (cadicomp, sem bonificações; dá quase o mesmo que o custo médio) e, por
+//    último, o custo de aquisição atual (cadestoq.vlr_custoaq). Nunca cadprodu.vlr_custo (custo de cadastro).
+//    O custo das devoluções volta para o estoque (sai do CMV).
+//  - Despesas: cadconpg flg_tipo 'D' (tipo em cadtdesp); flg_tipo 'F' = fornecedores de mercadoria (só no caixa).
+//  - Entradas de caixa: financeiro_movimentacao baixada (status 1) em categorias de receita (tipo_categoria 0),
+//    sem transferências e ajustes de saldo (tipo_operacional 2).
+const custoItemSql = 'coalesce(nullif(s.vlr_custo_medio, 0), h.custo, nullif(e.vlr_custoaq, 0), 0)';
+const proximoMes = (m) => { const [a, b] = m.split('-').map(Number); return b === 12 ? `${a + 1}-01` : `${a}-${String(b + 1).padStart(2, '0')}`; };
+
+export async function dre(pool, { rede, filial }, de, ate) {
+  const p = [rede, filial, `${de}-01`, `${proximoMes(ate)}-01`];
+  const mesSql = (col) => `to_char(${col}, 'YYYY-MM')`;
+  const [vendas, cmv, despesas, entradas, fornecedores] = await Promise.all([
+    pool.query(`
+      SELECT ${mesSql('dat_emissao')} AS mes, count(*) FILTER (WHERE tip_venda = 'V') AS notas,
+             coalesce(sum(tot_bruto) FILTER (WHERE tip_venda = 'V'), 0) AS bruto,
+             coalesce(sum(tot_nota) FILTER (WHERE tip_venda = 'V'), 0) AS liquido,
+             coalesce(sum(tot_nota) FILTER (WHERE tip_venda = 'D'), 0) AS devolucoes
+        FROM cadcvend
+       WHERE cod_rede = $1 AND cod_filial = $2 AND dat_emissao >= $3 AND dat_emissao < $4
+         AND flg_excluido IS NULL AND tip_venda IN ('V', 'D')
+       GROUP BY 1 ORDER BY 1`, p),
+    pool.query(`
+      SELECT ${mesSql('i.dat_emissao')} AS mes,
+             round(sum(CASE WHEN v.tip_venda = 'D' THEN -1 ELSE 1 END * i.qtd_produto * ${custoItemSql}), 2) AS valor,
+             count(*) FILTER (WHERE v.tip_venda = 'V') AS itens,
+             count(*) FILTER (WHERE v.tip_venda = 'V' AND nullif(s.vlr_custo_medio, 0) IS NULL AND h.custo IS NOT NULL) AS "ultimaCompra",
+             count(*) FILTER (WHERE v.tip_venda = 'V' AND nullif(s.vlr_custo_medio, 0) IS NULL AND h.custo IS NULL AND nullif(e.vlr_custoaq, 0) IS NOT NULL) AS "custoAtual",
+             count(*) FILTER (WHERE v.tip_venda = 'V' AND ${custoItemSql} = 0) AS "semCusto"
+        FROM cadivend i
+        JOIN cadcvend v ON v.cod_rede = i.cod_rede AND v.cod_filial = i.cod_filial AND v.num_nota = i.num_nota
+        LEFT JOIN sumarizacao_mensal_custo_medio s ON s.cod_rede = i.cod_rede AND s.cod_filial = i.cod_filial AND s.cod_reduzido = i.cod_reduzido
+             AND s.ano = extract(year FROM i.dat_emissao) AND s.mes = extract(month FROM i.dat_emissao)
+        LEFT JOIN cadestoq e ON e.cod_rede = i.cod_rede AND e.cod_filial = i.cod_filial AND e.cod_reduzido = i.cod_reduzido
+        LEFT JOIN LATERAL (
+          SELECT ic.vlr_custo / greatest(ic.qtd_fator, 1) AS custo
+            FROM cadicomp ic
+           WHERE ic.cod_rede = i.cod_rede AND ic.cod_filial = i.cod_filial AND ic.cod_reduzido = i.cod_reduzido
+             AND (ic.dat_entrada + coalesce(ic.hor_entrada, '00:00:00'::time)) <= (i.dat_emissao + coalesce(i.hor_emissao, '23:59:59'::time))
+             AND ic.vlr_custo > 0 AND coalesce(ic.cod_natureza, '') NOT IN ('1949', '2949', '1910', '2910')
+           ORDER BY (ic.dat_entrada + coalesce(ic.hor_entrada, '00:00:00'::time)) DESC LIMIT 1) h ON true
+       WHERE i.cod_rede = $1 AND i.cod_filial = $2 AND i.dat_emissao >= $3 AND i.dat_emissao < $4
+         AND i.flg_excluido IS NULL AND v.flg_excluido IS NULL AND v.tip_venda IN ('V', 'D')
+       GROUP BY 1 ORDER BY 1`, p),
+    pool.query(`
+      SELECT concat_ws('-', d.cod_fornec, d.num_seqnota, d.num_documento, d.dat_vencto) AS id,
+             d.cod_despesa AS tipo, t.nom_despesa AS "tipoNome", d.cod_fornec AS "fornecedorId", f.nom_fornec AS fornecedor,
+             nullif(trim(d.nom_observ), '') AS obs, d.num_documento AS documento,
+             d.vlr_pagar AS valor, d.vlr_pago AS pago, d.dat_vencto AS vencimento, d.dat_pagto AS pagamento
+        FROM cadconpg d
+        LEFT JOIN cadtdesp t ON t.cod_rede = d.cod_rede AND t.cod_despesa = d.cod_despesa
+        LEFT JOIN cadforne f ON f.cod_rede = d.cod_rede AND f.cod_fornec = d.cod_fornec
+       WHERE d.cod_rede = $1 AND d.cod_filial = $2 AND d.flg_tipo = 'D'
+         AND ((d.dat_vencto >= $3 AND d.dat_vencto < $4) OR (d.dat_pagto >= $3 AND d.dat_pagto < $4))
+       ORDER BY d.dat_vencto, f.nom_fornec`, p),
+    pool.query(`
+      SELECT ${mesSql('m.data_movimento')} AS mes, c.id, c.descricao AS nome, round(sum(m.valor_lancamento), 2) AS valor
+        FROM financeiro_movimentacao m
+        JOIN financeiro_categoria c ON c.id = m.financeiro_categoria_id
+       WHERE m.cod_rede = $1 AND m.cod_filial = $2 AND m.data_movimento >= $3 AND m.data_movimento < $4
+         AND m.situacao = 0 AND m.status = 1 AND c.tipo_categoria = 0 AND c.tipo_operacional <> 2
+       GROUP BY 1, 2, 3 ORDER BY 1, 4 DESC`, p),
+    pool.query(`
+      SELECT ${mesSql('dat_pagto')} AS mes, coalesce(sum(vlr_pago), 0) AS valor, count(*) AS titulos
+        FROM cadconpg
+       WHERE cod_rede = $1 AND cod_filial = $2 AND flg_tipo = 'F' AND dat_pagto >= $3 AND dat_pagto < $4
+       GROUP BY 1 ORDER BY 1`, p),
+  ]);
+  return { de, ate, vendas: vendas.rows, cmv: cmv.rows, despesas: despesas.rows, entradas: entradas.rows, fornecedores: fornecedores.rows };
 }

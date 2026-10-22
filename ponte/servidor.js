@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import { lerConfig, criarPool, CAMINHO_CONFIG } from './banco.js';
 import * as consultas from './consultas.js';
 
-const VERSAO = '1.1';
+const VERSAO = '1.4';
 const cfg = lerConfig();
 const PORTA = cfg.portaPonte || 3790;
 const PROJETO = cfg.projetoFirebase || 'farmarotina-ed7c3';
@@ -67,6 +67,7 @@ async function autorizar(req, modulo, nomeModulo) {
 
 // ---------- rotas ----------
 const DATA = /^\d{4}-\d{2}-\d{2}$/;
+const MES = /^\d{4}-(0[1-9]|1[0-2])$/;
 const hojeLocal = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 
 async function responder(url, req) {
@@ -77,8 +78,9 @@ async function responder(url, req) {
     return { ok: true, versao: VERSAO, filial: opcoes.filial, banco };
   }
   // Permissão exigida por cada rota (módulo do FarmaRotina)
-  const ROTAS = { clientes: 'crediario', recebimentos: 'crediario', atrasados: 'crediario', produtos: 'produtos', orcamento: 'orcamento' };
-  const NOMES = { crediario: 'o Crediário', produtos: 'a consulta de Produtos', orcamento: 'o Orçamento' };
+  const ROTAS = { clientes: 'crediario', recebimentos: 'crediario', atrasados: 'crediario', produtos: 'produtos', orcamento: 'orcamento', dre: 'dre' };
+  const NOMES = { crediario: 'o Crediário', produtos: 'a consulta de Produtos', orcamento: 'o Orçamento', dre: 'o DRE' };
+  // O módulo 'dre' não existe em js/perm.js (ninguém o recebe): na prática só o administrador passa
   const modulo = ROTAS[partes[0]];
   if (!modulo) throw new ErroHttp(404, 'Endereço não encontrado.');
   await autorizar(req, modulo, NOMES[modulo]);
@@ -109,6 +111,14 @@ async function responder(url, req) {
     const ate = url.searchParams.get('ate') || de;
     if (!DATA.test(de) || !DATA.test(ate)) throw new ErroHttp(400, 'Datas inválidas.');
     return consultas.recebimentos(pool, opcoes, de, ate);
+  }
+  if (partes[0] === 'dre') {
+    const de = url.searchParams.get('de') || '';
+    const ate = url.searchParams.get('ate') || de;
+    if (!MES.test(de) || !MES.test(ate) || ate < de) throw new ErroHttp(400, 'Meses inválidos.');
+    const meses = (Number(ate.slice(0, 4)) - Number(de.slice(0, 4))) * 12 + Number(ate.slice(5)) - Number(de.slice(5)) + 1;
+    if (meses > 12) throw new ErroHttp(400, 'Escolha no máximo 12 meses.');
+    return consultas.dre(pool, opcoes, de, ate);
   }
   if (partes[0] === 'atrasados') {
     const dias = Math.max(1, Math.min(3650, Number(url.searchParams.get('dias')) || 1));

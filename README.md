@@ -112,6 +112,17 @@ Item **Consultas Trier** no menu → `consultas/consulta.html`, uma área à par
 - **Enviar pelo WhatsApp** com a mensagem pronta (itens, crediário, à vista e validade; sem telefone, o WhatsApp abre para escolher o contato) e **Imprimir**;
 - os orçamentos ficam **salvos no FarmaRotina** (coleção `orcamentos`), com situação (Aberto, Aprovado, Não aprovado, "Vencido" quando passa da validade), **Duplicar** e **Atualizar preços** para reaproveitar um orçamento antigo.
 
+**DRE** (`consultas/dre.html`) — **só administradores** (o módulo `dre` não existe na lista de permissões, então ninguém mais o recebe; a ponte também recusa):
+- **aba Mês:** lado a lado o **Resultado por competência** e o **Fluxo de caixa** do mês, com % da receita líquida e comparação com o mês anterior. Clique numa linha para ver os lançamentos.
+  - **Receita bruta** = vendas do mês (`cadcvend`, `tip_venda` V, valor da nota). **Devoluções** = notas D (devoluções de clientes). As notas O (saída para fornecedor ou filial) ficam fora.
+  - **CMV** = itens vendidos × **custo médio do mês** do Trier (`sumarizacao_mensal_custo_medio`, que só existe de jun/2026 em diante); sem ele, o **custo da última compra antes da venda** (`cadicomp`) e, por último, o custo de aquisição atual. Nunca o custo de cadastro. A tela diz quantos itens usaram cada custo.
+  - **Despesas** = contas a pagar de despesa (`cadconpg`, tipo D) **pelo vencimento**. Cada uma cai numa linha do DRE pelo tipo do Trier (Funcionários → Pessoal, Tributos → Impostos, Energia → Ocupação, Despesas diversas → Outras despesas etc.), a não ser que tenha sido classificada.
+  - **Caixa** = entradas baixadas no financeiro do Trier (à vista, crediário recebido) − fornecedores de mercadoria pagos − despesas pagas (pelo dia do pagamento).
+  - **Lançamentos manuais** (coleção `dre_ajustes`): o que não está no sistema, como a **taxa de cartão** (o Trier não guarda a taxa por venda), pró-labore pago por fora ou bonificações. Entram só no resultado.
+- **aba Ano:** os meses do ano lado a lado, com total, margem líquida e saldo do caixa (clique no mês para abrir).
+- **aba Classificar despesas:** despesas dos últimos 12 meses agrupadas por fornecedor e descrição. Escolha a linha do DRE e se vale **só para aquela descrição** (ex.: "ALUGUEL", sem os números do mês) ou **para todo o fornecedor**. O app lembra (coleção `dre_regras`). Há também a linha **"Não entra no DRE"** para retirada de lucro, investimento e parcela de empréstimo: elas aparecem só no caixa.
+- **CSV** e **Imprimir** no mês e no ano.
+
 **Criar outro módulo de consulta:** consulta SQL em `ponte/consultas.js` + rota em `ponte/servidor.js`; página `.html` + `.js` em `consultas/` usando `iniciar` e `api` de `consultas/js/comum.js`; item em `CONSULTAS` (mesmo arquivo); módulo em `js/perm.js` com `grupo: 'consultas'` (ele já entra no item do menu).
 
 **Instalar a ponte num computador da farmácia:**
@@ -320,3 +331,4 @@ Opções que um módulo pode usar (veja os exemplos em `js/modulos/`):
 - **Configurações:** menu lateral personalizável por usuário (arrastar no computador; tela de Configurações no celular), barra do celular e atalhos da tela inicial.
 - **Compras:** Pedido de compras e Histórico de vendas, trazidos do sistema em Python para páginas do site (sem servidor), com os dados no Firebase.
 - **Consultas Trier** (página separada `consultas/consulta.html`): módulos **Crediário** e **Produtos**. Crediário — o que o cliente tem em aberto, conferência dos recebimentos e clientes em atraso, lendo o banco do Trier pela ponte local (`ponte/`), sem guardar nada na nuvem.
+- **DRE** (Consultas Trier, só administradores): resultado por competência e fluxo de caixa lado a lado, visão do ano, classificação das despesas por fornecedor ou descrição e lançamentos manuais (ponte 1.4, rota `/dre`).

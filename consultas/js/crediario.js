@@ -66,7 +66,7 @@ function linhaBusca(c) {
     <div class="linha-texto"><div class="linha-titulo">${esc(c.nome)}
       ${c.bloqueado ? '<span class="selo-texto perigo">Bloqueado</span>' : ''}${!c.ativo ? ' <span class="selo-texto">Inativo</span>' : ''}</div>
       <div class="linha-sub">Cód. ${c.id}${c.cpf ? ` · ${esc(c.cpf)}` : ''}${c.telefone ? ` · ${esc(c.telefone)}` : ''}</div></div>
-    <div class="linha-valor">${c.parcelas ? `<span><b>${moeda(c.aberto)}</b>${c.vencido > 0 ? `<small class="cred-vencido">${moeda(c.vencido)} vencido</small>` : ''}</span>`
+    <div class="linha-valor">${c.parcelas ? `<span><b>${moeda(c.aberto)}</b>${c.vencido > 0 ? `<small class="cred-vencido">${c.comJuros != null ? `${moeda(c.comJuros)} com juros` : `${moeda(c.vencido)} vencido`}</small>` : ''}</span>`
       : '<span class="mudo">nada em aberto</span>'}</div></a>`;
 }
 
@@ -301,8 +301,11 @@ async function abaAtrasados(corpo) {
     const vis = termo ? lista.filter((c) => normalizar(c.nome).includes(termo)) : lista;
     if (!lista.length) { resultado.innerHTML = '<div class="vazio cartao">Nenhum cliente em atraso. 🎉</div>'; return; }
     const farmacia = NOME_FARMACIA ? `da ${NOME_FARMACIA}` : 'da farmácia';
+    // Ponte antiga (antes da 1.3) não manda o total com juros
+    const comJuros = lista.some((c) => c.comJuros != null);
     resultado.innerHTML = `<div class="metricas cred-metricas">
         <div class="metrica perigo"><div class="metrica-rotulo">Total vencido</div><div class="metrica-valor">${moeda(soma(vis, 'vencido'))}</div></div>
+        ${comJuros ? `<div class="metrica perigo"><div class="metrica-rotulo">Total com juros</div><div class="metrica-valor">${moeda(soma(vis, 'comJuros'))}</div></div>` : ''}
         <div class="metrica"><div class="metrica-rotulo">Clientes</div><div class="metrica-valor">${vis.length}</div></div>
         <div class="metrica"><div class="metrica-rotulo">Parcelas vencidas</div><div class="metrica-valor">${soma(vis, 'parcelas')}</div></div>
       </div>
@@ -314,7 +317,7 @@ async function abaAtrasados(corpo) {
             <td><a href="#cliente=${c.id}">${esc(c.nome || `Cliente ${c.id}`)}</a>${c.bloqueado ? ' <span class="selo-texto perigo">Bloqueado</span>' : ''}<small>Cód. ${c.id}${c.saldos ? ` · ${c.saldos} saldo(s) devedor(es)` : ''}</small></td>
             <td>${fmtData(c.maisAntigo)}<small>${c.dias} dias</small></td>
             <td class="num some-celular">${c.parcelas}</td>
-            <td class="num"><b>${moeda(c.vencido)}</b></td>
+            <td class="num"><b>${moeda(c.vencido)}</b>${c.comJuros != null ? `<small class="cred-vencido">${moeda(c.comJuros)} com juros</small>` : ''}</td>
             <td class="some-celular">${c.ultimoPagamento ? fmtData(c.ultimoPagamento) : '<span class="mudo">—</span>'}</td>
             <td class="so-tela">${zap ? `<a class="btn icone whats" href="${esc(zap)}" target="_blank" rel="noopener" title="Cobrar pelo WhatsApp" aria-label="Cobrar pelo WhatsApp">${icone('brand-whatsapp')}</a>` : ''}</td></tr>`;
         }).join('')}</tbody></table></section>`;
