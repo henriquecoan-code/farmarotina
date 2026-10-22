@@ -1,3 +1,6 @@
 # Ponte com o Trier: dependências e configuração com senha nunca vão para o repositório
 ponte/node_modules/
 config.json
+# Gerados pela ponte oculta
+ponte/ponte.log
+ponte/parar.flag

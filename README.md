@@ -118,7 +118,11 @@ Item **Consultas Trier** no menu → `consultas/consulta.html`, uma área à par
 1. Ter o [Node.js](https://nodejs.org) instalado.
 2. Copiar a pasta `ponte/` do repositório e, dentro dela, rodar `npm install` uma vez.
 3. Criar `C:\FarmaRotinaPonte\config.json` a partir do `ponte/config.exemplo.json` (servidor, banco, usuário e senha). **Esse arquivo nunca vai para o GitHub.** Opcionais: `filial` (padrão 3), `carenciaJuros` (padrão 10 dias), `portaPonte` (padrão 3790).
-4. Abrir `ponte/iniciar.bat` (deixar a janela minimizada). Para abrir junto com o Windows: `Win + R` → `shell:startup` → colar ali um atalho do `iniciar.bat`.
+4. Abrir a ponte de um destes jeitos:
+   - **`ponte/iniciar-oculto.vbs` (recomendado):** sem nenhuma janela. Ela reinicia sozinha se cair, e o que ela escreve fica em `ponte/ponte.log`. Para encerrar, use **`ponte/parar.bat`**.
+   - **`ponte/iniciar.bat`:** com a janela do CMD aberta, útil para ver erros na hora. Para encerrar, feche a janela.
+
+   Para abrir junto com o Windows: `Win + R` → `shell:startup` → colar ali um **atalho do `iniciar-oculto.vbs`** (no lugar do atalho antigo do `iniciar.bat`).
 5. No FarmaRotina, liberar os módulos de consulta (ex.: **Crediário**) para quem vai usar (admin já tem).
 
 **Usuário do banco:** use um usuário só de leitura. No Trier o grupo `consulta` já tem leitura de tudo; no pgAdmin, conectado ao banco do Trier como `postgres`:

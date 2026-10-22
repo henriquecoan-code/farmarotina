@@ -47,9 +47,11 @@ function mensagem(o) {
   const nome = String(o.clienteNome || '').trim().split(/\s+/)[0];
   const farmacia = config.NOME_FARMACIA || 'farmácia';
   const linhas = o.itens.map((it) => `• ${fmtNum(it.qtd, 0)}x ${it.nome} — ${moeda(subCred(it))}`);
+  // Preço cheio (PMC sem desconto) riscado no WhatsApp (~texto~), para mostrar o quanto o cliente economiza
+  const cheio = t.cheio > t.credito ? [`Preço cheio (sem desconto): ~${moeda(t.cheio)}~`] : [];
   const valores = t.economia > 0
-    ? [`*Crediário:* ${moeda(t.credito)}`, `*À vista:* ${moeda(t.vista)} (economia de ${moeda(t.economia)})`]
-    : [`*Total:* ${moeda(t.credito)}`];
+    ? [...cheio, `*Crediário:* ${moeda(t.credito)}`, `*À vista:* ${moeda(t.vista)} (economia de ${moeda(t.economia)})`]
+    : [...cheio, `*Total:* ${moeda(t.credito)}`];
   return [`Olá${nome ? ', ' + nome : ''}! Segue o orçamento da ${farmacia} (${fmtData(o.dataHora || hoje())}):`, '',
     ...linhas, '', ...valores, '',
     `Orçamento válido até ${fmtData(o.validade || somarDias(o.dataHora || hoje(), o.validadeDias || 7))}. Qualquer dúvida, é só responder esta mensagem.`].join('\n');
@@ -70,7 +72,8 @@ function imprimir(o) {
     <table><thead><tr><th>Produto</th><th>Qtd</th><th>Crediário</th><th>À vista</th></tr></thead>
     <tbody>${o.itens.map((it) => `<tr><td>${esc(it.nome)}${it.laboratorio ? ` <small>(${esc(it.laboratorio)})</small>` : ''}</td>
       <td>${fmtNum(it.qtd, 0)}</td><td>${moeda(subCred(it))}</td><td>${moeda(subVista(it))}</td></tr>`).join('')}</tbody>
-    <tfoot><tr><th colspan="2">Total</th><th>${moeda(t.credito)}</th><th>${moeda(t.vista)}</th></tr></tfoot></table>
+    <tfoot>${t.cheio > t.credito ? `<tr><td colspan="2">Preço cheio (sem desconto)</td><td colspan="2"><s>${moeda(t.cheio)}</s></td></tr>` : ''}
+    <tr><th colspan="2">Total</th><th>${moeda(t.credito)}</th><th>${moeda(t.vista)}</th></tr></tfoot></table>
     ${o.obs ? `<p>${esc(o.obs)}</p>` : ''}
   </div>`);
   document.body.append(area);
