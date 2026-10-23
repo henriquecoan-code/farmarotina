@@ -124,6 +124,7 @@ Item **Consultas Trier** no menu → `consultas/consulta.html`, uma área à par
   - **Despesas** = contas a pagar de despesa (`cadconpg`, tipo D) **pelo vencimento**. Cada uma cai numa linha do DRE pelo tipo do Trier (Funcionários → Pessoal, Tributos → Impostos, Energia → Ocupação, Despesas diversas → Outras despesas etc.), a não ser que tenha sido classificada.
   - **Caixa** = entradas baixadas no financeiro do Trier (à vista, crediário recebido) − fornecedores de mercadoria pagos − despesas pagas (pelo dia do pagamento).
   - **Lançamentos manuais** (coleção `dre_ajustes`): o que não está no sistema, como a **taxa de cartão** (o Trier não guarda a taxa por venda), pró-labore pago por fora ou bonificações. Entram só no resultado.
+- **aba Painel:** gráficos dos últimos 6 ou 12 meses fechados: resultado por mês (receita líquida, lucro bruto e lucro líquido), margens, para onde vão as despesas, entradas e saídas do caixa e ticket médio, com os indicadores do período no topo. Passe o mouse ou toque para ver os valores (gráficos com Chart.js, o mesmo do Histórico de vendas).
 - **aba Ano:** os meses do ano lado a lado, com total, margem líquida e saldo do caixa (clique no mês para abrir).
 - **aba Classificar despesas:** despesas dos últimos 12 meses agrupadas por fornecedor e descrição. Escolha a linha do DRE e se vale **só para aquela descrição** (ex.: "ALUGUEL", sem os números do mês) ou **para todo o fornecedor**. O app lembra (coleção `dre_regras`). Há também a linha **"Não entra no DRE"** para retirada de lucro, investimento e parcela de empréstimo: elas aparecem só no caixa.
 - **CSV** e **Imprimir** no mês e no ano.
@@ -337,3 +338,4 @@ Opções que um módulo pode usar (veja os exemplos em `js/modulos/`):
 - **Compras:** Pedido de compras e Histórico de vendas, trazidos do sistema em Python para páginas do site (sem servidor), com os dados no Firebase.
 - **Consultas Trier** (página separada `consultas/consulta.html`): módulos **Crediário** e **Produtos**. Crediário — o que o cliente tem em aberto, conferência dos recebimentos e clientes em atraso, lendo o banco do Trier pela ponte local (`ponte/`), sem guardar nada na nuvem.
 - **DRE** (Consultas Trier, só administradores): resultado por competência e fluxo de caixa lado a lado, visão do ano, classificação das despesas por fornecedor ou descrição e lançamentos manuais (ponte 1.4, rota `/dre`).
+- **DRE → Painel:** aba com indicadores e gráficos dos últimos 6 ou 12 meses.

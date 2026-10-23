@@ -198,7 +198,18 @@
 
 /* ---------- DRE ---------- */
 .dre { display: flex; flex-direction: column; gap: 14px; }
-.dre-abas { max-width: 560px; }
+.dre-abas { max-width: 720px; }
+/* Cores dos gráficos: 3 primeiras da paleta categórica validada (azul, laranja, verde-água), passos próprios no escuro */
+.dre { --dre-s1: #2a78d6; --dre-s2: #eb6834; --dre-s3: #1baf7a; }
+@media (prefers-color-scheme: dark) { .dre { --dre-s1: #3987e5; --dre-s2: #d95926; --dre-s3: #199e70; } }
+.dre-graficos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.dre-grafico-cartao { display: flex; flex-direction: column; gap: 4px; }
+.dre-grafico-cartao.largo { grid-column: 1 / -1; }
+.dre-grafico { position: relative; height: 260px; margin-top: 6px; }
+.dre-grafico-cartao.largo .dre-grafico { height: 300px; }
+.dre-sobe { color: var(--ok); font-weight: 600; }
+.dre-desce { color: var(--perigo); font-weight: 600; }
+@media (max-width: 760px) { .dre-graficos { grid-template-columns: 1fr; } .dre-grafico, .dre-grafico-cartao.largo .dre-grafico { height: 240px; } }
 .dre-abas span { display: flex; align-items: center; justify-content: center; gap: 6px; }
 .dre-corpo { display: flex; flex-direction: column; gap: 14px; }
 .dre-botoes { align-items: center; }
@@ -236,4 +247,6 @@ small.dre-classificada { color: var(--ok); font-weight: 600; }
   .dre-tabela tr.dre-itens { display: none; }
   .dre-grade { grid-template-columns: 1fr 1fr; }
   .dre-anual { min-width: 0; font-size: 9px; }
+  .dre-graficos { grid-template-columns: 1fr 1fr; }
+  .dre-grafico-cartao { break-inside: avoid; }
 }

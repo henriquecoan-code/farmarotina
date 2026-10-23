@@ -2,7 +2,7 @@
 // de caixa (o que entrou e o que foi pago). Os números vêm do Trier pela ponte (rota /dre); a linha de cada despesa
 // segue o tipo do Trier, a não ser que o administrador a classifique (coleção dre_regras). Lançamentos que não estão
 // no sistema (ex.: taxa de cartão) entram à mão (coleção dre_ajustes). Só administradores.
-// Endereços: dre.html (#mes=AAAA-MM) · #aba=ano&ano=AAAA · #aba=classificar
+// Endereços: dre.html (#mes=AAAA-MM) · #aba=painel&meses=6|12 · #aba=ano&ano=AAAA · #aba=classificar
 import { db } from '../../js/db.js';
 import { NOME_FARMACIA, NOME_APP } from '../../js/config.js';
 import { ehAdmin } from '../../js/perm.js';
@@ -164,6 +164,7 @@ function calcular(r, mes, ajustes) {
 // ---------- página ----------
 const ABAS = [
   { id: 'mes', rot: 'Mês', icone: 'calendar-month' },
+  { id: 'painel', rot: 'Painel', icone: 'chart-line' },
   { id: 'ano', rot: 'Ano', icone: 'calendar-stats' },
   { id: 'classificar', rot: 'Classificar despesas', icone: 'tags' },
 ];
@@ -171,6 +172,7 @@ const ABAS = [
 async function pagina(main) {
   const q = new URLSearchParams(location.hash.slice(1));
   const aba = ABAS.some((a) => a.id === q.get('aba')) ? q.get('aba') : 'mes';
+  for (const g of graficos.splice(0)) g.destroy();
   main.innerHTML = '';
   if (!ehAdmin()) {
     main.append(html(`<div class="pagina"><div class="alerta atencao">${icone('lock')}<span>O DRE é só para administradores.</span></div></div>`));
@@ -192,7 +194,8 @@ async function pagina(main) {
   const botoes = $('.dre-botoes', main);
   try {
     if (!regras.size && !avisoRegras) await carregarRegras();
-    if (aba === 'ano') await abaAno(corpo, botoes, Number(q.get('ano')) || Number(mesAtual().slice(0, 4)));
+    if (aba === 'painel') await abaPainel(corpo, botoes, Number(q.get('meses')) === 6 ? 6 : 12);
+    else if (aba === 'ano') await abaAno(corpo, botoes, Number(q.get('ano')) || Number(mesAtual().slice(0, 4)));
     else if (aba === 'classificar') await abaClassificar(corpo);
     else await abaMes(corpo, botoes, /^\d{4}-\d{2}$/.test(q.get('mes') || '') ? q.get('mes') : somarMeses(mesAtual(), -1));
   } catch (e) {
@@ -410,6 +413,133 @@ function dialogoClassificar(d, aoSalvar = recarregar) {
 }
 
 const recarregar = () => window.dispatchEvent(new HashChangeEvent('hashchange'));
+
+// ---------- aba Painel (gráficos) ----------
+// Chart.js (o mesmo do Histórico de vendas). Cores: as 3 primeiras da paleta categórica validada (azul, laranja,
+// verde-água; claro e escuro em consultas.css), sempre na mesma ordem; o que é o quê fica na legenda e no tooltip.
+const graficos = [];
+
+function coresGrafico() {
+  const css = getComputedStyle(document.querySelector('.dre') || document.documentElement);
+  const v = (n) => css.getPropertyValue(n).trim();
+  return { s: [v('--dre-s1'), v('--dre-s2'), v('--dre-s3')], texto: v('--texto-2'), grade: v('--borda'), superficie: v('--superficie') };
+}
+
+const moedaCurta = (n) => {
+  const a = Math.abs(n);
+  if (a >= 1e6) return `R$ ${fmtNum(n / 1e6, 1)} mi`;
+  if (a >= 1e3) return `R$ ${fmtNum(n / 1e3, 0)} mil`;
+  return `R$ ${fmtNum(n, 0)}`;
+};
+
+async function abaPainel(corpo, botoes, qtd) {
+  const ate = somarMeses(mesAtual(), -1); // último mês fechado
+  const de = somarMeses(ate, -(qtd - 1));
+  const meses = [];
+  for (let m = de; m <= ate; m = somarMeses(m, 1)) meses.push(m);
+  botoes.innerHTML = `<div class="seg dre-ano">${[6, 12].map((n) => `<label><input type="radio" name="dre-meses" value="${n}" ${n === qtd ? 'checked' : ''}><span>${n} meses</span></label>`).join('')}</div>`;
+  $$('input[name="dre-meses"]', botoes).forEach((r) => { r.onchange = () => { location.hash = `aba=painel&meses=${r.value}`; }; });
+
+  const anos = [...new Set([de.slice(0, 4), ate.slice(0, 4)])];
+  const [r, ...listas] = await Promise.all([dados(de, ate), ...anos.map(ajustesDoAno)]);
+  const ajustes = [...new Map(listas.flat().map((x) => [x.id, x])).values()];
+  const calc = meses.map((m) => calcular(r, m, ajustes));
+  const soma = (f) => cent(calc.reduce((s, c) => s + f(c), 0));
+  const receita = soma((c) => c.val.receitaLiquida);
+  const lucro = soma((c) => c.val.lucroLiquido);
+  const bruto = soma((c) => c.val.lucroBruto);
+  const notas = soma((c) => c.vendas.notas);
+  const ult = calc.at(-1);
+  const pen = calc.at(-2);
+  const variacao = (a, b) => (b ? `<span class="${a >= b ? 'dre-sobe' : 'dre-desce'}">${a >= b ? '▲' : '▼'} ${fmtNum(Math.abs((a - b) / Math.abs(b)) * 100, 0)}%</span> vs ${esc(nomeMes(pen.mes))}` : '');
+  const despesasLinhas = CLASSES.filter((c) => c.id !== 'fora')
+    .map((c) => ({ ...c, valor: soma((x) => x.val[c.id]) })).filter((c) => c.valor > 0).sort((a, b) => b.valor - a.valor);
+
+  corpo.innerHTML = `${avisoTopo()}
+    <p class="mudo dre-titulo-mes">${esc(nomeMes(de, true))} a ${esc(nomeMes(ate, true))} · meses fechados</p>
+    <div class="metricas dre-metricas">
+      <div class="metrica"><div class="metrica-rotulo">Receita líquida (${qtd} meses)</div><div class="metrica-valor">${moeda(receita)}</div>
+        <div class="mudo pequeno">${esc(nomeMes(ate))}: ${moeda(ult.val.receitaLiquida)} · ${variacao(ult.val.receitaLiquida, pen?.val.receitaLiquida)}</div></div>
+      <div class="metrica"><div class="metrica-rotulo">Margem bruta</div><div class="metrica-valor">${receita ? pct(bruto / receita * 100) : '—'}</div>
+        <div class="mudo pequeno">lucro bruto ${moeda(bruto)}</div></div>
+      <div class="metrica ${lucro < 0 ? 'perigo' : 'destaque'}"><div class="metrica-rotulo">Lucro líquido (${qtd} meses)</div><div class="metrica-valor">${moeda(lucro)}</div>
+        <div class="mudo pequeno">${receita ? pct(lucro / receita * 100) : '—'} da receita · ${esc(nomeMes(ate))}: ${moeda(ult.val.lucroLiquido)}</div></div>
+      <div class="metrica"><div class="metrica-rotulo">Ticket médio</div><div class="metrica-valor">${notas ? moeda((soma((c) => c.vendas.liquido)) / notas) : '—'}</div>
+        <div class="mudo pequeno">${fmtNum(notas, 0)} vendas</div></div>
+    </div>
+    ${window.Chart ? `<div class="dre-graficos">
+      <section class="cartao dre-grafico-cartao largo"><h2>Resultado por mês</h2>
+        <p class="mudo pequeno">Receita líquida, lucro bruto e lucro líquido.</p><div class="dre-grafico"><canvas data-g="resultado" aria-label="Gráfico do resultado por mês"></canvas></div></section>
+      <section class="cartao dre-grafico-cartao"><h2>Margens</h2>
+        <p class="mudo pequeno">% da receita líquida.</p><div class="dre-grafico"><canvas data-g="margens" aria-label="Gráfico das margens por mês"></canvas></div></section>
+      <section class="cartao dre-grafico-cartao"><h2>Para onde vão as despesas</h2>
+        <p class="mudo pequeno">Soma dos ${qtd} meses, sem o CMV.</p><div class="dre-grafico" style="height:${Math.max(200, despesasLinhas.length * 34 + 40)}px"><canvas data-g="despesas" aria-label="Gráfico das despesas por linha"></canvas></div></section>
+      <section class="cartao dre-grafico-cartao"><h2>Caixa: entradas e saídas</h2>
+        <p class="mudo pequeno">Saídas = fornecedores + despesas pagas.</p><div class="dre-grafico"><canvas data-g="caixa" aria-label="Gráfico de entradas e saídas do caixa"></canvas></div></section>
+      <section class="cartao dre-grafico-cartao"><h2>Ticket médio</h2>
+        <p class="mudo pequeno">Receita de vendas ÷ número de vendas.</p><div class="dre-grafico"><canvas data-g="ticket" aria-label="Gráfico do ticket médio por mês"></canvas></div></section>
+    </div>` : `<div class="alerta atencao">${icone('chart-off')}<span>Não consegui carregar a biblioteca de gráficos (sem internet?). Os números estão na aba Ano.</span></div>`}
+    <p class="mudo pequeno">Passe o mouse (ou toque) nos gráficos para ver os valores. Os mesmos números em tabela: <a href="#aba=ano&ano=${ate.slice(0, 4)}">aba Ano</a>.</p>`;
+  if (!window.Chart) return;
+
+  const Chart = window.Chart;
+  const c = coresGrafico();
+  Chart.defaults.color = c.texto;
+  Chart.defaults.borderColor = c.grade;
+  Chart.defaults.font.family = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  const rotulos = meses.map((m) => nomeMes(m));
+  const tooltip = (fmt) => ({ mode: 'index', intersect: false, callbacks: { label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y ?? ctx.parsed.x)}` } });
+  const legenda = { position: 'bottom', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8, boxHeight: 8 } };
+  const linha = (label, data, cor) => ({ label, data, borderColor: cor, backgroundColor: cor, borderWidth: 2, tension: 0.25,
+    pointRadius: 3, pointHoverRadius: 5, pointBorderColor: c.superficie, pointBorderWidth: 2, borderCapStyle: 'round', borderJoinStyle: 'round' });
+  const barra = (label, data, cor) => ({ label, data, backgroundColor: cor, borderRadius: { topLeft: 4, topRight: 4 }, borderSkipped: 'bottom', maxBarThickness: 24, borderColor: c.superficie, borderWidth: 0 });
+  const grade = { color: c.grade, drawTicks: false };
+  // Meses na horizontal (sem inclinar); o Chart.js pula alguns quando não cabem
+  const eixoX = { grid: { display: false }, ticks: { maxRotation: 0, autoSkipPadding: 10 } };
+  const base = { maintainAspectRatio: false, interaction: { mode: 'index', intersect: false } };
+  const novo = (nome, cfg) => graficos.push(new Chart($(`[data-g="${nome}"]`, corpo), cfg));
+
+  novo('resultado', {
+    type: 'line',
+    data: { labels: rotulos, datasets: [
+      linha('Receita líquida', calc.map((x) => x.val.receitaLiquida), c.s[0]),
+      linha('Lucro bruto', calc.map((x) => x.val.lucroBruto), c.s[1]),
+      linha('Lucro líquido', calc.map((x) => x.val.lucroLiquido), c.s[2])] },
+    options: { ...base, plugins: { legend: legenda, tooltip: tooltip(moeda) },
+      scales: { x: eixoX, y: { beginAtZero: true, grid: grade, ticks: { callback: moedaCurta, padding: 6 } } } },
+  });
+  const margem = (f) => calc.map((x) => (x.val.receitaLiquida ? cent(f(x) / x.val.receitaLiquida * 100) : null));
+  novo('margens', {
+    type: 'line',
+    data: { labels: rotulos, datasets: [
+      linha('Margem bruta', margem((x) => x.val.lucroBruto), c.s[0]),
+      linha('Margem líquida', margem((x) => x.val.lucroLiquido), c.s[1])] },
+    options: { ...base, plugins: { legend: legenda, tooltip: tooltip(pct) },
+      scales: { x: eixoX, y: { beginAtZero: true, grid: grade, ticks: { callback: (v) => `${v}%`, padding: 6 } } } },
+  });
+  novo('despesas', {
+    type: 'bar',
+    data: { labels: despesasLinhas.map((d) => d.nome), datasets: [{ ...barra('Total', despesasLinhas.map((d) => d.valor), c.s[0]), borderRadius: { topRight: 4, bottomRight: 4 }, borderSkipped: 'left' }] },
+    options: { maintainAspectRatio: false, indexAxis: 'y',
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (ctx) => ` ${moeda(ctx.parsed.x)} · ${receita ? pct(ctx.parsed.x / receita * 100) : ''} da receita` } } },
+      scales: { x: { beginAtZero: true, grid: grade, ticks: { callback: moedaCurta, maxRotation: 0, autoSkipPadding: 10 } }, y: { grid: { display: false } } } },
+  });
+  novo('caixa', {
+    type: 'bar',
+    data: { labels: rotulos, datasets: [
+      barra('Entradas', calc.map((x) => x.caixa.totalEntradas), c.s[0]),
+      barra('Saídas', calc.map((x) => cent(x.caixa.fornecedores.valor + x.caixa.totalPagas)), c.s[1])] },
+    options: { ...base, datasets: { bar: { categoryPercentage: 0.7, barPercentage: 0.9 } },
+      plugins: { legend: legenda, tooltip: { ...tooltip(moeda), callbacks: { ...tooltip(moeda).callbacks, footer: (itens) => `Saldo: ${moeda(calc[itens[0].dataIndex].caixa.saldo)}` } } },
+      scales: { x: eixoX, y: { beginAtZero: true, grid: grade, ticks: { callback: moedaCurta, padding: 6 } } } },
+  });
+  novo('ticket', {
+    type: 'line',
+    data: { labels: rotulos, datasets: [linha('Ticket médio', calc.map((x) => (x.vendas.notas ? cent(x.vendas.liquido / x.vendas.notas) : null)), c.s[0])] },
+    options: { ...base, plugins: { legend: { display: false }, tooltip: tooltip(moeda) },
+      scales: { x: eixoX, y: { grid: grade, ticks: { callback: (v) => moeda(v), padding: 6 } } } },
+  });
+}
 
 // ---------- aba Ano ----------
 async function abaAno(corpo, botoes, ano) {
