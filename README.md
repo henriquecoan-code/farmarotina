@@ -26,7 +26,6 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
   - aplicações de injetáveis agendadas;
   - lembretes de anotações;
   - retornos de atendimento;
-  - trocas com outras farmácias;
   - rotinas (mensais, semanais etc.).
 
   O cartão fica **amarelo no dia** e **vermelho quando atrasado**. Cada um tem botões rápidos: avisar pelo WhatsApp, registrar, marcar como resolvido ou concluir.

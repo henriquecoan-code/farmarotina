@@ -2,8 +2,6 @@ import { db } from '../db.js';
 import { podeVer, podeEditar, obterPerfilAtual } from '../perm.js';
 import { schemaPorId } from '../modulos/index.js';
 import { FAIXAS, turnoAtual, normalizarTemp, foraDaFaixa } from '../modulos/temperatura.js';
-import { mensagemTroca, nomeParceiro } from '../modulos/trocas.js';
-import { carregarRef } from '../form.js';
 import { linhaRegistro, botaoAcaoRapida } from './lista.js';
 import { atalhosInicio, prefs } from '../preferencias.js';
 import { descreverFrequencia } from '../modulos/rotinas.js';
@@ -21,9 +19,10 @@ function quando(iso) {
 const DIAS_AGENDA = 7;
 const resumo = (s, n = 80) => (String(s || '').length > n ? String(s).slice(0, n - 1) + '…' : String(s || ''));
 
-// Tudo que tem prazo, num lugar só: aplicações agendadas, lembretes, retornos de atendimento e trocas.
-async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, trocasPend, rotinasAtivas }) {
-  if (!agendadas && !notasRec && !atendAbertos && !trocasPend && !rotinasAtivas) return;
+// Tudo que tem prazo, num lugar só: aplicações agendadas, lembretes, retornos de atendimento e rotinas.
+// (As trocas ficam de fora: o acompanhamento delas é no painel da tela de Trocas.)
+async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, rotinasAtivas }) {
+  if (!agendadas && !notasRec && !atendAbertos && !rotinasAtivas) return;
   secao.hidden = false;
   const tels = await telefones().catch(() => new Map());
   const itens = [];
@@ -46,18 +45,6 @@ async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, trocasPe
       sub: resumo(a.descricao), href: `#/m/atendimentos/${a.id}`,
       acoes: `${a.clienteId ? botaoWhatsapp(a, tels.get(a.clienteId), false, mensagemRetorno(a)) : ''}
         ${podeResolverAtend ? `<a class="btn icone" href="#/m/atendimentos/${a.id}/editar" title="Registrar a solução" aria-label="Registrar a solução">${icone('check')}<span class="so-celular">Resolver</span></a>` : ''}`,
-    }) });
-  }
-  const sTrocas = schemaPorId('trocas');
-  const telsParceiros = trocasPend?.length
-    ? new Map((await carregarRef('parceiros').catch(() => [])).map((p) => [p.id, p.telefone])) : new Map();
-  for (const t of (trocasPend || []).filter((x) => x.prazo)) {
-    const tel = t.telefone || telsParceiros.get(t.parceiroId);
-    itens.push({ data: t.prazo, html: cartaoPrazo({
-      data: t.prazo, etiqueta: 'Troca', genero: 'o', titulo: sTrocas.titulo(t), sub: `${t.tipo} · ${nomeParceiro(t)}`,
-      href: `#/m/trocas/${t.id}`,
-      acoes: `${tel ? botaoWhatsapp({ clienteNome: nomeParceiro(t) }, tel, false, mensagemTroca(t)) : ''}
-        ${botaoAcaoRapida(sTrocas, t, true)}`,
     }) });
   }
   const sRotinas = schemaPorId('rotinas');
@@ -195,7 +182,7 @@ export async function paginaInicio(main) {
   }
   metricas.innerHTML = cards.join('');
 
-  await montarAgenda(pagina.querySelector('[data-agenda]'), { agendadas, notasRec, atendAbertos, trocasPend, rotinasAtivas });
+  await montarAgenda(pagina.querySelector('[data-agenda]'), { agendadas, notasRec, atendAbertos, rotinasAtivas });
 
   const recentes = [
     ...(afericoesHoje || []).map((d) => ({ s: schemaPorId('afericoes'), d })),
