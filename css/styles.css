@@ -602,3 +602,19 @@ input[type=checkbox], input[type=radio] { width: auto; min-height: 0; accent-col
   .sub-nav { order: 3; flex-basis: 100%; overflow-x: auto; }
   .sub-main { padding: 14px 12px 40px; }
 }
+
+/* ---------- busca geral (menu) ---------- */
+.busca-menu { position: relative; display: flex; align-items: center; margin: 14px 2px 0; }
+.busca-menu > .ti { position: absolute; left: 10px; color: var(--mudo); pointer-events: none; }
+.busca-menu input { padding-left: 32px; padding-right: 52px; min-height: 38px; font-size: 14px; background: var(--superficie-2); border-color: var(--borda); }
+.busca-menu input:focus { background: var(--superficie); }
+.busca-menu kbd {
+  position: absolute; right: 8px; font: 500 10px/1 system-ui, sans-serif; color: var(--mudo);
+  padding: 3px 5px; border: 1px solid var(--borda-forte); border-radius: 5px; pointer-events: none;
+}
+.busca-menu input:focus + kbd, .busca-menu input:not(:placeholder-shown) + kbd { display: none; }
+.busca-menu + .nav-links { margin-top: 10px; }
+.topo-celular [data-abrir-busca] { border: 0; }
+.busca-resultados { display: flex; flex-direction: column; gap: 18px; }
+.busca-grupo { display: flex; flex-direction: column; gap: 8px; }
+.busca-grupo h2 { font-size: 15px; }

@@ -9,6 +9,7 @@ import { paginaDetalhe } from './paginas/detalhe.js';
 import { paginaEditar } from './paginas/editar.js';
 import { paginaUsuarios } from './paginas/usuarios.js';
 import { paginaConfiguracoes } from './paginas/configuracoes.js';
+import { paginaBusca, prepararBusca } from './paginas/busca.js';
 import { itensMenu, itensVisiveisNoMenu, itensBarraCelular, aplicarOrdem, prefs, salvarPreferencias, arrastavel } from './preferencias.js';
 import { $, $$, esc, html, icone, toast, mensagemErro } from './util.js';
 
@@ -24,6 +25,7 @@ function montarShell() {
       <button type="button" class="btn icone" data-abrir-menu aria-label="Abrir menu">${icone('menu-2')}</button>
       <div class="marca">${icone('first-aid-kit')} ${esc(NOME_APP)}</div>
       <span class="status-rede" hidden>${icone('wifi-off')}</span>
+      <button type="button" class="btn icone" data-abrir-busca aria-label="Buscar">${icone('search')}</button>
     </header>
     <nav class="lateral" aria-label="Menu principal">
       <div class="lateral-topo">
@@ -31,6 +33,10 @@ function montarShell() {
         <button type="button" class="btn icone so-desktop" data-organizar title="Organizar o menu" aria-label="Organizar o menu">${icone('adjustments-horizontal')}</button>
       </div>
       ${DEMO ? '<div class="selo-texto info demo">Modo demonstração</div>' : ''}
+      <form class="busca-menu" role="search" data-busca-menu>
+        ${icone('search')}<input type="search" placeholder="Buscar em tudo…" aria-label="Buscar em tudo o que está salvo" autocomplete="off">
+        <kbd class="so-desktop" title="Atalho: Ctrl + K">Ctrl K</kbd>
+      </form>
       <div class="nav-links"></div>
       <div class="nav-rodape">
         <div class="usuario-atual"><b>${esc(perfil.nome || '')}</b><span class="mudo">${ehAdmin() ? 'Administrador' : esc(perfil.email || '')}</span></div>
@@ -51,6 +57,7 @@ function montarShell() {
     else if (e.target.closest('[data-fechar-menu], .nav-links a')) fecharMenu();
   });
   $('[data-organizar]', shell).onclick = () => organizarMenu(shell);
+  ligarBusca(shell, fecharMenu);
   $('[data-sair]', shell).onclick = () => db.sair();
   const reiniciar = $('[data-reiniciar]', shell);
   if (reiniciar) reiniciar.onclick = () => {
@@ -78,6 +85,51 @@ function atualizarMenu() {
   $('.barra-inferior', shell).innerHTML = [inicio, ...itensBarraCelular()].map(itemLink).join('')
     + `<button type="button" data-abrir-menu>${icone('dots')}<span>Mais</span></button>`;
   marcarAtivo();
+}
+
+// Campo "Buscar em tudo" do menu: no computador mostra os resultados enquanto digita;
+// no celular busca ao tocar em Buscar/Enter e fecha o menu.
+function ligarBusca(shell, fecharMenu) {
+  const form = $('[data-busca-menu]', shell);
+  const input = $('input', form);
+  const naBusca = () => lerRota().partes[0] === 'busca';
+  const buscar = (termo, substituir) => {
+    const alvo = `#/busca?q=${encodeURIComponent(termo)}`;
+    if (substituir && naBusca()) {
+      history.replaceState(null, '', alvo);
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    } else location.hash = alvo;
+  };
+  let espera;
+  input.addEventListener('focus', prepararBusca);
+  input.addEventListener('input', () => {
+    clearTimeout(espera);
+    const termo = input.value.trim();
+    if (termo.length < 2 || window.matchMedia('(max-width: 860px)').matches) return;
+    espera = setTimeout(() => buscar(termo, true), 300);
+  });
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    clearTimeout(espera);
+    if (!input.value.trim()) return;
+    buscar(input.value.trim(), naBusca());
+    fecharMenu();
+    input.blur();
+  });
+  $('[data-abrir-busca]', shell).onclick = () => { shell.classList.add('menu-aberto'); setTimeout(() => input.focus(), 50); };
+  // Ctrl+K (ou /) foca a busca no computador
+  document.addEventListener('keydown', (e) => {
+    const digitando = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName);
+    if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') || (e.key === '/' && !digitando)) {
+      e.preventDefault();
+      input.focus();
+      input.select();
+    }
+  });
+  // Mantém o texto do campo igual ao da busca aberta (inclusive ao abrir um link de busca)
+  const sincronizar = () => { if (naBusca() && document.activeElement !== input) input.value = lerRota().query.get('q') || ''; };
+  window.addEventListener('hashchange', sincronizar);
+  sincronizar();
 }
 
 function marcarAtivo() {
@@ -145,6 +197,7 @@ async function rotear() {
     if (!p0) return await paginaInicio(main);
     if (p0 === 'usuarios') return await paginaUsuarios(main);
     if (p0 === 'configuracoes') return await paginaConfiguracoes(main);
+    if (p0 === 'busca') return await paginaBusca(main, query);
     if (p0 === 'm') {
       const schema = schemaPorId(p1);
       if (!schema || !visiveis().includes(schema)) {

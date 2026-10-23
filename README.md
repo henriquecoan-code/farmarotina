@@ -6,6 +6,12 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
 
 ## O que o app faz
 
+### Busca geral
+- Campo **"Buscar em tudo…"** no topo do menu, acima do Início. No computador, também abre com **Ctrl + K** ou **/**; no celular, pela lupa no topo da tela.
+- Procura em todos os módulos que a pessoa pode ver, além dos orçamentos, das regras do pedido de compras e, para o admin, dos usuários. Os resultados vêm agrupados por módulo, com link para o registro.
+- Casa pelo começo das palavras, sem acento e sem diferenciar maiúsculas: "mari" acha "Maria", e "dipi" acha "Dipirona".
+- Como o Firestore não tem busca por texto, a busca lê os **300 registros mais recentes de cada módulo** e filtra no navegador. Não procura no histórico de vendas nem nas consultas ao Trier.
+
 ### Tela inicial
 - **Avisos**, por exemplo a temperatura do turno que ainda não foi registrada. O aviso já abre o local que falta.
 - **Resumo em números:**
