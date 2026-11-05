@@ -217,7 +217,13 @@ async function abaMes(corpo, botoes, mes) {
   const base = m.val.receitaLiquida;
   const parcial = mes >= mesAtual();
 
-  botoes.innerHTML = `<input type="month" class="dre-mes" value="${mes}" max="${mesAtual()}" aria-label="Mês">
+  const seguinte = somarMeses(mes, 1);
+  botoes.innerHTML = `<div class="dre-navmes">
+      <a class="btn icone" href="#mes=${anterior}" title="${esc(nomeMes(anterior, true))}" aria-label="Mês anterior">${icone('chevron-left')}</a>
+      <input type="month" class="dre-mes" value="${mes}" max="${mesAtual()}" aria-label="Mês">
+      ${seguinte <= mesAtual() ? `<a class="btn icone" href="#mes=${seguinte}" title="${esc(nomeMes(seguinte, true))}" aria-label="Próximo mês">${icone('chevron-right')}</a>`
+    : `<button type="button" class="btn icone" disabled aria-label="Próximo mês">${icone('chevron-right')}</button>`}
+    </div>
     <button type="button" class="btn" data-csv title="Planilha (CSV)">${icone('file-spreadsheet')}<span class="some-celular"> CSV</span></button>
     <button type="button" class="btn" data-imprimir title="Imprimir">${icone('printer')}<span class="some-celular"> Imprimir</span></button>`;
   $('.dre-mes', botoes).onchange = (e) => { if (e.target.value) location.hash = `mes=${e.target.value}`; };

@@ -214,6 +214,8 @@
 .dre-corpo { display: flex; flex-direction: column; gap: 14px; }
 .dre-botoes { align-items: center; }
 .dre-mes { width: auto; min-height: 40px; }
+.dre-navmes { display: flex; align-items: center; gap: 4px; }
+.dre-navmes .btn.icone[disabled] { opacity: .4; cursor: default; }
 .dre-ano span { padding: 0 12px; white-space: nowrap; }
 .dre-titulo-mes { margin: 0; }
 .dre-grade { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 14px; align-items: start; }
