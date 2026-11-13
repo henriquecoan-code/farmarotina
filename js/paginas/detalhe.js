@@ -5,6 +5,9 @@ import { fmtValor, campoVisivel, htmlAlerta, limparCacheRef } from '../form.js';
 import { renderAnexos } from '../anexos.js';
 import { linhaRegistro, botaoAcaoRapida } from './lista.js';
 import { telefones, textoQuando, situacao, botaoWhatsapp, botaoRegistrar, encerrarAgenda } from '../agenda.js';
+import { imprimirFolha } from '../export.js';
+import { carregarRef } from '../form.js';
+import { botoesHistorico } from './painel-clientes.js';
 import { $, esc, html, icone, fmtData, fmtDataHora, toast, mensagemErro } from '../util.js';
 
 export async function paginaDetalhe(main, schema, id) {
@@ -28,6 +31,7 @@ export async function paginaDetalhe(main, schema, id) {
       <div><h1>${esc(schema.titulo(d))}</h1><div class="mudo">${esc(schema.sub?.(d) || '')}</div></div>
       <div class="botoes">
         ${botaoAcaoRapida(schema, d, true)}
+        ${schema.impressaoRegistro ? `<button type="button" class="btn" data-imprimir-registro>${icone('printer')} ${esc(schema.impressaoRegistro.rot)}</button>` : ''}
         ${podeEditar(schema) ? `<a class="btn" href="#/m/${schema.id}/${id}/editar">${icone('pencil')} Editar</a>` : ''}
         ${podeExcluir() ? `<button type="button" class="btn perigo" data-excluir>${icone('trash')} Excluir</button>` : ''}
       </div>
@@ -47,6 +51,14 @@ export async function paginaDetalhe(main, schema, id) {
     <div data-anexos></div>
   </div>`);
   main.append(pagina);
+
+  // Impressão do próprio registro (ex.: declaração de aplicação do injetável), com os dados do cadastro do cliente
+  const btnImprimir = $('[data-imprimir-registro]', pagina);
+  if (btnImprimir) btnImprimir.onclick = async () => {
+    const cliente = (await carregarRef('clientes')).find((c) => c.id === d.clienteId) || { nome: d.clienteNome };
+    const f = schema.impressaoRegistro.gerar(d, cliente);
+    imprimirFolha(f.titulo, f.descricao, f.corpo, f.assinatura);
+  };
 
   const btnExcluir = $('[data-excluir]', pagina);
   if (btnExcluir) btnExcluir.onclick = async () => {
@@ -130,6 +142,20 @@ async function historicoCliente(el, cliente) {
     } catch { return []; }
   }));
   const itens = resultados.flat().sort((a, b) => String(b.d.dataHora).localeCompare(String(a.d.dataHora)));
+
+  // Aferições e aplicações do cliente: imprimir o histórico ou mandar pelo WhatsApp
+  let depois = $('.cartao-topo', secao);
+  for (const s of fontes.filter((x) => x.historico)) {
+    const docs = itens.filter((i) => i.s.id === s.id).map((i) => i.d);
+    if (!docs.length) continue;
+    const barra = html(`<div class="historico-acoes"><span class="mudo">${icone(s.icone)} ${docs.length} ${docs.length === 1 ? s.historico.singular : s.historico.plural}</span></div>`);
+    const botoes = botoesHistorico(s, cliente, docs);
+    botoes.querySelectorAll('.btn').forEach((b) => b.classList.add('pequeno'));
+    barra.append(...botoes.childNodes);
+    depois.after(barra);
+    depois = barra;
+  }
+
   $('.lista', secao).innerHTML = itens.length
     ? itens.map(({ s, d }) => linhaRegistro(s, d).replace('<div class="linha-titulo">', `<div class="linha-titulo"><span class="etiqueta">${esc(s.nome)}</span> `)).join('')
     : '<div class="vazio">Nenhum registro para este cliente.</div>';

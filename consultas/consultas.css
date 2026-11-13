@@ -252,3 +252,18 @@ small.dre-classificada { color: var(--ok); font-weight: 600; }
   .dre-graficos { grid-template-columns: 1fr 1fr; }
   .dre-grafico-cartao { break-inside: avoid; }
 }
+
+/* ---------- Crediário: ficha de cadastro (botão "i") ---------- */
+.cred-linha { display: flex; align-items: center; border-top: 1px solid var(--borda); }
+.cred-linha:first-child { border-top: 0; }
+.cred-linha .linha { flex: 1; min-width: 0; border-top: 0; padding-left: 4px; }
+.cred-info { width: 36px; min-height: 36px; border: 0; color: var(--pri); flex-shrink: 0; margin-left: 8px; }
+.cred-info .ti { font-size: 22px; }
+.cred-info:hover { background: var(--pri-claro); }
+.ficha { display: flex; flex-direction: column; gap: 16px; }
+.ficha-secao h3 { display: flex; align-items: center; gap: 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .03em; color: var(--mudo); margin: 0 0 8px; }
+.ficha-secao .campos { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px 16px; }
+.ficha-secao .campos dd { word-break: break-word; }
+.ficha-endereco { margin: 0 0 6px; font-weight: 500; line-height: 1.5; }
+.ficha .link { display: inline-flex; align-items: center; gap: 4px; padding: 0; text-decoration: none; }
+.ficha-secao + .ficha-secao { border-top: 1px solid var(--borda); padding-top: 14px; }

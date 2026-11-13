@@ -41,23 +41,26 @@ export const atendimentos = {
 function criarAnotacoes({ id, nome, novo, icone, categorias, etiquetaAgenda }) {
   return {
     id, modulo: 'notas', nome, novo, icone,
-    ordem: 'dataHora', desc: true,
+    ordem: 'dataHora', desc: true, caderno: true,
     etiquetaAgenda,
     campos: [
       { k: 'titulo', rot: 'Título', tipo: 'texto', obrig: true },
       { k: 'dataHora', rot: 'Data e hora', tipo: 'datahora', obrig: true, lg: 'm' },
       { k: 'categoria', rot: 'Categoria', tipo: 'opcoes', opcoes: categorias, lista: true, padrao: categorias[0], lg: 'm' },
-      { k: 'texto', rot: 'Anotação', tipo: 'textarea', linhas: 6, obrig: true },
-      { k: 'lembrete', rot: 'Lembrar em', tipo: 'data', lg: 'm', ajuda: 'Opcional' },
+      { k: 'texto', rot: 'Anotação', tipo: 'textarea', linhas: 14, obrig: true },
+      { k: 'lembrete', rot: 'Lembrar em', tipo: 'datahora', semPadrao: true, lg: 'm', ajuda: 'Opcional' },
       { k: 'resolvido', rot: 'Resolvido', tipo: 'simnao', lg: 'm', se: (v) => !!v.lembrete },
     ],
     titulo: (d) => d.titulo,
     sub: (d) => [d.categoria, fmtDataHora(d.dataHora), String(d.texto || '').slice(0, 60)].filter(Boolean).join(' · '),
-    valor: (d) => (d.lembrete && !d.resolvido ? `lembrar ${fmtData(d.lembrete)}` : ''),
+    valor: (d) => (d.lembrete && !d.resolvido ? `lembrar ${fmtDataHora(d.lembrete)}` : ''),
     alerta: (v) => {
       if (!v.lembrete || v.resolvido) return null;
-      if (v.lembrete < hoje()) return { nivel: 'atencao', msg: `Lembrete atrasado (era ${fmtData(v.lembrete)}).` };
-      if (v.lembrete === hoje()) return { nivel: 'atencao', msg: 'Lembrete para hoje.' };
+      // Lembretes antigos só têm a data; os novos têm data e hora
+      const dia = String(v.lembrete).slice(0, 10);
+      const hora = String(v.lembrete).slice(11, 16);
+      if (dia < hoje()) return { nivel: 'atencao', msg: `Lembrete atrasado (era ${fmtDataHora(v.lembrete)}).` };
+      if (dia === hoje()) return { nivel: 'atencao', msg: hora ? `Lembrete para hoje às ${hora}.` : 'Lembrete para hoje.' };
       return null;
     },
     acaoRapida: {

@@ -185,7 +185,8 @@ export function renderForm(schema, dados = {}, { onSalvar, onCancelar, rotuloSal
   const inicial = { ...dados };
   for (const c of schema.campos) {
     if (vazio(inicial[c.k]) && c.padrao !== undefined) inicial[c.k] = typeof c.padrao === 'function' ? c.padrao() : c.padrao;
-    if (vazio(inicial[c.k]) && c.tipo === 'datahora') inicial[c.k] = agoraLocal();
+    if (vazio(inicial[c.k]) && c.tipo === 'datahora' && !c.semPadrao) inicial[c.k] = agoraLocal();
+    if (c.tipo === 'datahora' && /^\d{4}-\d{2}-\d{2}$/.test(inicial[c.k] || '')) inicial[c.k] += 'T08:00';
   }
 
   const form = html(`<form class="form" novalidate>

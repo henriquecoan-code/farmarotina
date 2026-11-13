@@ -41,12 +41,20 @@ const RECEBIMENTOS = [
 
 export function demoCrediario(caminho) {
   const url = new URL(caminho, 'http://demo');
-  const [p0, p1] = url.pathname.split('/').filter(Boolean);
+  const [p0, p1, p2] = url.pathname.split('/').filter(Boolean);
   if (p0 === 'saude') return { ok: true, versao: 'demo', filial: 3, banco: true };
   if (p0 === 'clientes' && !p1) {
     const termo = (url.searchParams.get('busca') || '').toUpperCase();
     return CLIENTES.filter((c) => c.nome.includes(termo) || String(c.id) === termo || c.cpf.replace(/\D/g, '').startsWith(termo.replace(/\D/g, '') || 'x'))
       .map(resumo).sort((a, b) => (b.parcelas > 0) - (a.parcelas > 0) || a.nome.localeCompare(b.nome));
+  }
+  if (p0 === 'clientes' && p2 === 'cadastro') {
+    const c = CLIENTES.find((x) => x.id === Number(p1));
+    if (!c) throw new Error('Cliente não encontrado.');
+    return { id: c.id, nome: c.nome, cpf: c.cpf, rg: '12.345.678-9', rgOrgao: 'SSP', rgUf: 'SP', nascimento: '1968-03-14',
+      sexo: c.nome.startsWith('MARIA') || c.nome.startsWith('ANA') ? 'F' : 'M', mae: 'BENEDITA DA SILVA',
+      celular: c.telefone || null, fone: '(11) 3333-1234', email: null, trabalho: c.id === 877 ? 'MERCADO BOA COMPRA' : null,
+      endereco: 'RUA DAS FLORES', numero: '120', complemento: 'CASA 2', bairro: 'CENTRO', cidade: 'SAO PAULO', uf: 'SP', cep: '01001000', };
   }
   if (p0 === 'clientes') {
     const c = CLIENTES.find((x) => x.id === Number(p1));

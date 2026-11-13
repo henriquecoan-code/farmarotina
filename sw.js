@@ -1,7 +1,7 @@
 // Service worker: permite abrir o app sem internet.
 // Arquivos do próprio site: tenta a rede primeiro (para pegar atualizações) e cai no cache se estiver offline.
 // Os dados ficam a cargo do cache offline do Firestore, não daqui.
-const CACHE = 'farmarotina-v2';
+const CACHE = 'farmarotina-v3';
 const EXTERNOS = ['https://cdn.jsdelivr.net/', 'https://www.gstatic.com/firebasejs/'];
 
 self.addEventListener('install', (e) => {
@@ -12,6 +12,17 @@ self.addEventListener('install', (e) => {
 self.addEventListener('activate', (e) => {
   e.waitUntil(caches.keys().then((ks) => Promise.all(ks.filter((k) => k !== CACHE).map((k) => caches.delete(k)))));
   self.clients.claim();
+});
+
+// Clique numa notificação de lembrete: foca uma janela do app já aberta (indo para a anotação) ou abre uma nova
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  const url = new URL(e.notification.data?.url || './', self.location.href).href;
+  e.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((janelas) => {
+    const aberta = janelas.find((j) => j.url.split('#')[0] === url.split('#')[0]);
+    if (aberta) return aberta.focus().then((j) => j.navigate(url).catch(() => j));
+    return self.clients.openWindow(url);
+  }));
 });
 
 self.addEventListener('fetch', (e) => {

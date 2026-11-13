@@ -4,6 +4,7 @@ import {
   prefs, itensMenu, aplicarOrdem, itensBarraCelular, candidatosAtalho, atalhosInicio, salvarPreferencias, arrastavel,
 } from '../preferencias.js';
 import { $, $$, esc, html, icone, toast, mensagemErro } from '../util.js';
+import { suportado, permissao, ativas, ativar, desativar } from '../notificacoes.js';
 
 async function salvar(parcial, msg = 'Preferências salvas') {
   try {
@@ -42,6 +43,13 @@ export async function paginaConfiguracoes(main) {
       <div class="config-atalhos chips"></div>
     </section>
 
+    <section class="cartao">
+      <div class="cartao-topo"><h2>${icone('bell')} Notificações dos lembretes</h2></div>
+      <p class="mudo pequeno">Avisa no Windows ou no celular na hora de cada lembrete das anotações, enquanto o FarmaRotina estiver
+        aberto (numa aba ou instalado como app, mesmo minimizado). Vale só para este aparelho e este navegador.</p>
+      <div data-notif></div>
+    </section>
+
     <div class="acoes"><button type="button" class="btn" data-restaurar>${icone('restore')} Restaurar padrão</button></div>
   </div>`);
   main.append(pagina);
@@ -50,6 +58,7 @@ export async function paginaConfiguracoes(main) {
   desenharBarra($('.config-barra', pagina));
   desenharAtalhos($('.config-atalhos', pagina));
   $('[data-ocultar-metricas]', pagina).onchange = (e) => salvar({ ocultarMetricas: e.target.checked });
+  desenharNotificacoes($('[data-notif]', pagina));
 
   $('[data-restaurar]', pagina).onclick = async () => {
     if (!confirm('Voltar o menu, a barra do celular e os atalhos ao padrão?')) return;
@@ -113,4 +122,26 @@ function desenharAtalhos(el) {
   el.innerHTML = candidatosAtalho().map((i) => `<label class="chip"><input type="checkbox" value="${esc(i.id)}" ${marcados.has(i.id) ? 'checked' : ''}><span>${icone(i.schema.icone)} ${esc(i.schema.novo)}</span></label>`).join('')
     || '<div class="vazio">Nenhum módulo com registro novo disponível.</div>';
   el.addEventListener('change', () => salvar({ atalhosInicio: $$('input:checked', el).map((c) => c.value) }));
+}
+
+// ---------- notificações (por aparelho) ----------
+function desenharNotificacoes(el) {
+  if (!suportado()) {
+    el.innerHTML = '<div class="alerta atencao"><span>Este navegador não aceita notificações.</span></div>';
+    return;
+  }
+  const bloqueado = permissao() === 'denied';
+  el.innerHTML = ativas()
+    ? `<div class="linha-form"><span class="selo-texto ok">${icone('check')} Ativadas neste aparelho</span>
+        <button type="button" class="btn pequeno" data-desativar>Desativar</button></div>`
+    : bloqueado
+      ? `<div class="alerta atencao">${icone('bell-off')}<span>As notificações estão bloqueadas para este site. Libere no cadeado ao lado do endereço e recarregue a página.</span></div>`
+      : `<button type="button" class="btn pri" data-ativar>${icone('bell-ringing')} Ativar notificações neste aparelho</button>`;
+  const a = $('[data-ativar]', el);
+  if (a) a.onclick = async () => {
+    try { await ativar(); toast('Notificações ativadas', 'ok'); } catch (e) { toast(e.message, 'erro'); }
+    desenharNotificacoes(el);
+  };
+  const d = $('[data-desativar]', el);
+  if (d) d.onclick = () => { desativar(); toast('Notificações desativadas'); desenharNotificacoes(el); };
 }

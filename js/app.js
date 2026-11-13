@@ -10,6 +10,8 @@ import { paginaEditar } from './paginas/editar.js';
 import { paginaUsuarios } from './paginas/usuarios.js';
 import { paginaConfiguracoes } from './paginas/configuracoes.js';
 import { paginaBusca, prepararBusca } from './paginas/busca.js';
+import { paginaCaderno } from './paginas/caderno.js';
+import { iniciarLembretes } from './notificacoes.js';
 import { itensMenu, itensVisiveisNoMenu, itensBarraCelular, aplicarOrdem, prefs, salvarPreferencias, arrastavel } from './preferencias.js';
 import { $, $$, esc, html, icone, toast, mensagemErro } from './util.js';
 
@@ -204,6 +206,8 @@ async function rotear() {
         main.innerHTML = `<div class="pagina"><div class="vazio">Você não tem acesso a esse módulo.</div></div>`;
         return;
       }
+      // Anotações: tela de caderno (lista ao lado + anotação aberta para editar)
+      if (schema.caderno) return await paginaCaderno(main, schema, p2, query);
       if (!p2) return await paginaLista(main, schema);
       if (p2 === 'novo') return await paginaEditar(main, schema, null, query);
       if (p3 === 'editar' && podeEditar(schema)) return await paginaEditar(main, schema, p2, query);
@@ -249,6 +253,7 @@ db.observarAuth(async (u) => {
     definirPerfil(p);
     db.definirUsuario({ uid: u.uid, nome: p.nome || u.nome });
     montarShell();
+    iniciarLembretes();
     await rotear();
   } catch (e) {
     console.error(e);

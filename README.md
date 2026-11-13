@@ -33,6 +33,8 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
 
 ### Saúde
 - **Aferições:** pressão, glicemia e oximetria, com alerta para valores alterados.
+  - **Clientes na tela de Aferições**, abaixo do título "Todos os registros" e da linha de busca e datas, e acima do histórico: um cartão por cliente com o número de aferições, a data da última e um sinal quando ela saiu alterada. Ao clicar, abrem as aferições daquele cliente com **Imprimir**, **Enviar pelo WhatsApp**, **Nova aferição** e **Ficha do cliente**. Em cima dos cartões há uma busca pelo nome ou telefone do cliente. **O período De/Até vale para os cartões:** com ele preenchido, só aparecem os clientes e as aferições do período, e o Imprimir e o WhatsApp levam só essas aferições (a folha mostra o período no topo).
+  - **Na tela do cliente**, quando ele tem aferições: **Imprimir** gera a folha de controle (dados do cliente e uma tabela com data, tipo, resultado, orientação e quem aferiu), e **Enviar pelo WhatsApp** manda as 10 últimas aferições em texto para o telefone do cadastro.
 - **Injetáveis:**
   - **Campos:** medicamento, via, local, lote, validade, receita e prescritor. Só o cliente é obrigatório; lote, validade e receita aparecem como *Recomendado (RDC 44/2009)*.
   - **Aplicações recorrentes:**
@@ -41,11 +43,17 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
     - **Seção Agendadas** no topo da lista, da mais próxima para a mais distante, com as mesmas cores da Agenda.
     - **Botão WhatsApp** com a mensagem pronta para avisar o cliente. Muda conforme faltam alguns dias, é o dia ou está atrasado, e não cita o nome do medicamento.
     - **Botão Registrar:** registra a aplicação de hoje direto, sem abrir formulário (só pede confirmação). Copia os dados, avança a dose, agenda a próxima data e dá baixa no agendamento anterior. Também é possível **encerrar o agendamento**, quando o cliente desiste.
+  - **Declaração de cada aplicação:** na página da aplicação, **Imprimir declaração** gera a *Declaração de Serviço Farmacêutico* para entregar ao cliente: paciente (nome, CPF e nascimento do cadastro), medicamento e dose, lote, validade, via, local, data e hora, receita e prescritor, próxima aplicação e quem aplicou, com espaço para a assinatura do paciente e do farmacêutico (CRF).
+  - **Clientes na tela de Injetáveis**, como nas aferições: abaixo de "Aplicações realizadas" e da linha de busca e datas, busca pelo nome ou telefone e um cartão por cliente. Ao clicar, aparece o histórico de aplicações dele com **Imprimir** (folha com data, medicamento e dose, via e local, lote e validade, receita e quem aplicou), **Enviar pelo WhatsApp** (as 10 últimas aplicações e a próxima data), **Nova aplicação** e **Ficha do cliente**. O período De/Até também vale aqui.
+  - **Na tela do cliente**, as aplicações têm a mesma barra de Imprimir e WhatsApp das aferições.
 
 ### Temperatura
 - **Um registro por turno com geladeira e ambiente juntos** (atual, mínima e máxima de cada um, e umidade), com alerta fora da faixa. O campo de ação corretiva aparece e se torna obrigatório quando algum valor sai da faixa.
-- **Lista em mini tabelas por dia:** uma linha por turno, com as colunas Geladeira, Ambiente e Umidade. Valores fora da faixa ficam em vermelho.
-- Registros antigos, feitos com geladeira e ambiente separados, continuam aparecendo e são juntados na mesma linha do turno.
+- **Planilha mensal:** escolha o mês (setas ‹ › ou o calendário). Cada dia do mês é uma linha e cada turno (manhã, tarde e, se houver registros, noite) tem as colunas Geladeira, Ambiente e Umidade, com a mínima e a máxima embaixo. Valores fora da faixa ficam em vermelho e os fins de semana aparecem sombreados.
+- **Resumo do mês** no topo: dias com registro, turnos sem registro, registros fora da faixa, menor e maior temperatura da geladeira e do ambiente, e a umidade máxima. Embaixo da planilha ficam as ações corretivas do mês.
+- **Turno sem registro:** o "+" na célula vazia abre o registro com o dia e o turno já preenchidos (por exemplo, para lançar um turno esquecido).
+- **Imprimir** gera a planilha do mês inteiro, com as ações corretivas e o campo para assinatura.
+- Registros antigos, feitos com geladeira e ambiente separados, continuam aparecendo e são juntados no mesmo turno.
 
 ### Trocas entre farmácias
 - **Quatro botões coloridos**, um para cada tipo: 🔵 *Peguei emprestado*, 🟠 *Emprestei*, 🟣 *Repassei (vencendo)* e 🟢 *Recebi (vencendo)*. A troca abre com o tipo já escolhido, e a lista mostra uma etiqueta da mesma cor.
@@ -64,6 +72,8 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
 - **Clientes:** cadastro com consentimento LGPD e histórico completo (aferições, aplicações e atendimentos).
 - **Atendimento:** dúvidas, encomendas e reclamações, com data de retorno e aviso pelo WhatsApp.
 - **Anotações de clientes** (Recados, Atendimento, Encomenda, Lembretes) e **Anotações de controle** (Estoque, Financeiro, Equipe, Compras, Manutenção, Documentos): mesmo funcionamento, com categoria e **lembrete com data**, que aparece na Agenda até ser marcado como resolvido. As duas usam a permissão *Anotações*.
+  - Abrem como um **caderno**: um segundo painel ao lado do menu lista as anotações (busca, filtro por categoria e ordenação — mais recentes, mais antigas, título, categoria ou lembretes primeiro; a ordem escolhida fica lembrada) e, ao clicar numa delas, ela abre direto para editar ao lado. No celular, a lista e a anotação aparecem uma de cada vez.
+  - O lembrete tem **data e hora**. Em *Configurações → Notificações dos lembretes* dá para ativar avisos do sistema (Windows ou celular) na hora do lembrete, enquanto o FarmaRotina estiver aberto (numa aba ou instalado como app, mesmo minimizado). Com o app totalmente fechado ainda não avisa (precisaria de um servidor de notificações).
 - **Fornecedores:** **horário limite para envio do pedido** (a lista mostra "Pedido até 14:00" ou "Encerrado") e prazo padrão de entrega.
 - **POPs:** todos com acesso leem; só o administrador edita.
 - **Rotinas:** tarefas que se repetem, como "todo começo de mês enviar o relatório CST e exportar o XML para a contabilidade" ou "atualizar estoque mínimo e demanda por curva ABC".
@@ -74,7 +84,8 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
 
 ### Em todos os módulos
 - **Anexos com anotações** (foto pela câmera ou arquivo), comprimidos automaticamente.
-- **Busca, filtro por período, "só alertas"**, **exportação CSV** (abre no Excel) e **impressão**, por exemplo a planilha mensal de temperatura.
+- **Busca, filtro por período, "só alertas"**, **exportação CSV** (abre no Excel) e **impressão**, por exemplo a planilha mensal de temperatura. No filtro, o dia do *Até* entra inteiro.
+- **Folhas impressas:** o campo *Conferido por / Data* fica no fim da página, à direita. O cabeçalho e o rodapé do navegador (título do site, data e endereço) não saem no Chrome e no Edge; no lugar entra só o número da página. Em outro navegador, desmarque *Cabeçalhos e rodapés* na janela de impressão.
 - **Offline:** o que for registrado sem internet sincroniza quando a conexão volta.
 - **Tema claro e escuro**, com layout próprio para celular (barra de atalhos embaixo) e para computador (menu lateral).
 
@@ -97,7 +108,8 @@ Usam o mesmo login do FarmaRotina e aparecem no menu lateral para quem tem o mó
 Item **Consultas Trier** no menu → `consultas/consulta.html`, uma área à parte para os módulos que **leem o banco do sistema da farmácia (Trier)**, para o menu principal não ficar cheio. A página inicial mostra se a ponte está conectada e os módulos que a pessoa pode abrir; cada módulo tem sua permissão em Usuários.
 
 **Crediário** (`consultas/crediario.html`) — **só lê** o banco do Trier e **nada vai para a nuvem**: os dados passam direto do banco para a tela, por um programa (a "ponte") que roda no próprio computador da farmácia.
-- **Cliente:** busca por nome, código ou CPF e mostra as parcelas em aberto (vencidas em vermelho), com juros estimados até hoje (como o Trier calcula: % ao dia do cadastro, depois da carência), o total para quitar, os últimos pagamentos e o WhatsApp. Dá para **marcar as parcelas** que o cliente vai pagar e ver a soma.
+- **Ficha rápida (ⓘ):** na lista da busca, o botão ⓘ à esquerda do nome abre a identificação, o contato e o endereço do cadastro do Trier (com "Ver no mapa"), mais os botões WhatsApp e Copiar dados, sem entrar no cliente. Clicar fora fecha. Precisa da ponte 1.5 ou mais nova; com a ponte antiga aparece o aviso para reiniciá-la.
+- **Cliente:** busca por nome, código ou CPF (os inativos no Trier não aparecem como ativos) e mostra as parcelas em aberto (vencidas em vermelho), com juros estimados até hoje (como o Trier calcula: % ao dia do cadastro, depois da carência), o total para quitar, os últimos pagamentos e o WhatsApp com uma **mensagem de cobrança amigável** pronta (quantas parcelas estão vencidas, desde quando e o valor sem juros; se estiver em dia, lembra a próxima parcela). Dá para **marcar as parcelas** que o cliente vai pagar e ver a soma.
 - **Saldo devedor:** quando o cliente paga só parte, o Trier baixa as parcelas e guarda o que faltou como saldo devedor (tabela `cadslddv`). Esses saldos aparecem junto das parcelas ("Saldo devedor — restou do pagamento de dd/mm"), com juros pela mesma regra, e entram em todos os totais, na busca e em Em atraso.
 - **Recebimentos:** conferência por período (padrão hoje), separada por caixa. O **recebido** é o que o cliente pagou de fato (parcelas e saldos baixados − saldo novo que ficou); mostra também juros/multa, quanto ficou de saldo devedor e os cancelados à parte.
 - **Em atraso:** clientes com parcela vencida (1, 30, 60, 90, 180 dias ou 1 ano), com botão de cobrança pelo WhatsApp.
@@ -294,6 +306,9 @@ Opções que um módulo pode usar (veja os exemplos em `js/modulos/`):
 | `tipo: 'ref'` + `preencher` | busca em outro cadastro e copia dados dele | cliente, farmácia parceira |
 | `tipo: 'secao'`, `rotLongo` | título separando grupos de campos; rótulo completo no detalhe e no CSV | temperatura |
 | `normalizar`, `renderLista` | converte registros antigos; desenha a lista do seu jeito | temperatura |
+| `painel` (com `abaixoDoTitulo`, `usaPeriodo`), `historico` | cartões de clientes acima da lista; folha e mensagem do histórico do cliente | aferições, injetáveis |
+| `impressaoRegistro` | botão de impressão na página do registro | injetáveis (declaração) |
+| `porMes`, `impressaoMes` | a lista mostra um mês por vez (setas no lugar de De/Até); impressão própria do mês | temperatura |
 | `detalheExtra` | conteúdo extra na página do registro | histórico da rotina |
 | `calcular` | campos preenchidos sozinhos (até o usuário alterar) | próxima aplicação, prazo |
 | `agenda` | seção de agendadas na lista | injetáveis |

@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import { lerConfig, criarPool, CAMINHO_CONFIG } from './banco.js';
 import * as consultas from './consultas.js';
 
-const VERSAO = '1.4';
+const VERSAO = '1.5';
 const cfg = lerConfig();
 const PORTA = cfg.portaPonte || 3790;
 const PROJETO = cfg.projetoFirebase || 'farmarotina-ed7c3';
@@ -101,6 +101,11 @@ async function responder(url, req) {
     return r;
   }
   if (partes[0] === 'clientes' && !partes[1]) return consultas.buscarClientes(pool, opcoes, url.searchParams.get('busca') || '');
+  if (partes[0] === 'clientes' && /^\d+$/.test(partes[1]) && partes[2] === 'cadastro') {
+    const r = await consultas.cadastroCliente(pool, opcoes, Number(partes[1]));
+    if (!r) throw new ErroHttp(404, 'Cliente não encontrado.');
+    return r;
+  }
   if (partes[0] === 'clientes' && /^\d+$/.test(partes[1])) {
     const r = await consultas.cliente(pool, opcoes, Number(partes[1]));
     if (!r) throw new ErroHttp(404, 'Cliente não encontrado.');

@@ -3,7 +3,7 @@
 // Navegação pelo endereço: crediario.html#cliente=123, #aba=recebimentos, #aba=atrasados
 import { NOME_FARMACIA } from '../../js/config.js';
 import { linkWhatsapp } from '../../js/agenda.js';
-import { $, $$, esc, html, icone, fmtData, fmtMoeda, hoje, normalizar } from '../../js/util.js';
+import { $, $$, esc, html, icone, fmtData, fmtMoeda, hoje, normalizar, abrirDialogo, toast } from '../../js/util.js';
 import { iniciar, api as apiPonte, telaErro } from './comum.js';
 
 const api = (caminho) => apiPonte(caminho, 'crediario');
@@ -62,12 +62,13 @@ async function paginaCrediario(main) {
 
 // ---------- Cliente: busca ----------
 function linhaBusca(c) {
-  return `<a class="linha ${c.vencido > 0 ? 'com-alerta perigo' : ''}" href="#cliente=${c.id}">
+  return `<div class="cred-linha"><button type="button" class="btn icone cred-info" data-info="${c.id}" title="Ver cadastro de ${esc(c.nome)}" aria-label="Ver cadastro de ${esc(c.nome)}">${icone('info-circle')}</button>
+    <a class="linha ${c.vencido > 0 ? 'com-alerta perigo' : ''}" href="#cliente=${c.id}">
     <div class="linha-texto"><div class="linha-titulo">${esc(c.nome)}
       ${c.bloqueado ? '<span class="selo-texto perigo">Bloqueado</span>' : ''}${!c.ativo ? ' <span class="selo-texto">Inativo</span>' : ''}</div>
       <div class="linha-sub">Cód. ${c.id}${c.cpf ? ` · ${esc(c.cpf)}` : ''}${c.telefone ? ` · ${esc(c.telefone)}` : ''}</div></div>
     <div class="linha-valor">${c.parcelas ? `<span><b>${moeda(c.aberto)}</b>${c.vencido > 0 ? `<small class="cred-vencido">${c.comJuros != null ? `${moeda(c.comJuros)} com juros` : `${moeda(c.vencido)} vencido`}</small>` : ''}</span>`
-      : '<span class="mudo">nada em aberto</span>'}</div></a>`;
+      : '<span class="mudo">nada em aberto</span>'}</div></a></div>`;
 }
 
 function abaBusca(corpo) {
@@ -98,6 +99,10 @@ function abaBusca(corpo) {
     }
   }
   input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(buscar, 350); });
+  resultado.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-info]');
+    if (b) abrirCadastro(Number(b.dataset.info));
+  });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { const primeiro = $('a.linha', resultado); if (primeiro) location.hash = primeiro.getAttribute('href'); }
   });
@@ -105,12 +110,39 @@ function abaBusca(corpo) {
   buscar();
 }
 
+// Mensagem de WhatsApp da tela do cliente: cobrança amigável, conforme a situação do crediário.
+// Usa o valor das parcelas (sem os juros estimados, que podem diferir do caixa do Trier).
+function mensagemCobranca(c, parcelas) {
+  const nome = primeiroNome(c.nome);
+  const farmacia = NOME_FARMACIA ? `da ${NOME_FARMACIA}` : 'da farmácia';
+  const ola = `Olá, ${nome}! Tudo bem? Aqui é ${farmacia} 😊`;
+  const vencidas = parcelas.filter((p) => p.dias > 0);
+  const aVencer = parcelas.filter((p) => p.dias <= 0);
+
+  if (vencidas.length) {
+    const desde = vencidas.reduce((m, p) => (p.vencimento < m ? p.vencimento : m), vencidas[0].vencimento);
+    const qtd = vencidas.length === 1 ? 'uma parcela' : `${vencidas.length} parcelas`;
+    return `${ola}\n\nPassando para lembrar que há ${qtd} do seu crediário em aberto desde ${fmtData(desde)}, `
+      + `no valor de ${moeda(soma(vencidas, 'valor'))}.\n\n`
+      + 'Sabemos que a correria do dia a dia faz a gente esquecer. Quando puder, passe aqui na farmácia '
+      + 'ou responda esta mensagem para combinarmos a melhor forma de acertar.\n\n'
+      + 'Se já tiver pago, pode desconsiderar. Obrigado pela confiança!';
+  }
+  if (aVencer.length) {
+    const prox = aVencer[0];
+    const quando = prox.dias === 0 ? 'vence hoje' : `vence em ${fmtData(prox.vencimento)}`;
+    return `${ola}\n\nSó um lembrete: a próxima parcela do seu crediário, de ${moeda(prox.valor)}, ${quando}.\n\n`
+      + 'Quando puder, é só passar aqui na farmácia. Qualquer dúvida, estamos à disposição. Obrigado!';
+  }
+  return `${ola}\n\nSeu crediário está em dia. Obrigado pela confiança! Qualquer coisa, estamos à disposição.`;
+}
+
 // ---------- Cliente: o que tem em aberto ----------
 async function abaCliente(corpo, id) {
   const { cliente: c, parcelas, pagamentos, carencia } = await api(`/clientes/${id}`);
   const total = (p) => p.valor + (p.juros || 0) + (p.multa || 0);
   const vencidas = parcelas.filter((p) => p.dias > 0);
-  const zap = linkWhatsapp(c.telefone, `Olá, ${primeiroNome(c.nome)}! Aqui é ${NOME_FARMACIA ? `da ${NOME_FARMACIA}` : 'da farmácia'}.`);
+  const zap = linkWhatsapp(c.telefone, mensagemCobranca(c, parcelas));
   const obs = [c.obs1, c.obs2].filter((o) => o && o.trim());
 
   corpo.innerHTML = `<a class="voltar so-tela" href="#">${icone('arrow-left')} Buscar outro cliente</a>
@@ -199,6 +231,72 @@ async function abaCliente(corpo, id) {
     const x = $('input[data-i]', tr);
     if (x) tr.addEventListener('click', (e) => { if (e.target !== x) { x.checked = !x.checked; atualizar(); } });
   });
+}
+
+// ---------- Ficha de cadastro (botão "i") ----------
+const SEXO = { F: 'Feminino', M: 'Masculino' };
+
+function idade(nasc) {
+  const [a, m, d] = String(nasc).split('-').map(Number);
+  const h = new Date();
+  const anos = h.getFullYear() - a - ((h.getMonth() + 1 < m || (h.getMonth() + 1 === m && h.getDate() < d)) ? 1 : 0);
+  return anos > 0 && anos < 120 ? anos : null;
+}
+const cepFmt = (c) => (/^\d{8}$/.test(c || '') ? `${c.slice(0, 5)}-${c.slice(5)}` : c);
+
+function enderecoCompleto(f) {
+  const l1 = [f.endereco, f.numero].filter(Boolean).join(', ') + (f.complemento ? ` - ${f.complemento}` : '');
+  const l2 = [f.bairro, [f.cidade, f.uf].filter(Boolean).join('/')].filter(Boolean).join(' - ');
+  return [l1, l2, f.cep ? `CEP ${cepFmt(f.cep)}` : ''].filter(Boolean);
+}
+
+function fichaHtml(f) {
+  const linha = (rot, val) => (val || val === 0 ? `<div><dt>${esc(rot)}</dt><dd>${val}</dd></div>` : '');
+  const secao = (titulo, ic, conteudo) => (conteudo.trim() ? `<section class="ficha-secao"><h3>${icone(ic)} ${esc(titulo)}</h3><dl class="campos">${conteudo}</dl></section>` : '');
+  const anos = f.nascimento && idade(f.nascimento);
+  const zap = linkWhatsapp(f.celular || f.fone, `Olá, ${primeiroNome(f.nome)}! Aqui é ${NOME_FARMACIA ? `da ${NOME_FARMACIA}` : 'da farmácia'}.`);
+  const tel = (n) => (n ? `<a href="tel:${esc(n.replace(/\D/g, ''))}">${esc(n)}</a>` : '');
+  const end = enderecoCompleto(f);
+  const mapa = end.length ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(end.join(', '))}` : '';
+
+  return `<div class="ficha">
+    ${secao('Identificação', 'id', linha('Código', f.id) + linha('CPF', esc(f.cpf)) +
+      linha('RG', f.rg ? esc([f.rg, [f.rgOrgao, f.rgUf].filter(Boolean).join('/')].filter(Boolean).join(' · ')) : '') +
+      linha('Nascimento', f.nascimento ? `${fmtData(f.nascimento)}${anos ? ` · ${anos} anos` : ''}` : '') +
+      linha('Sexo', SEXO[f.sexo] || '') + linha('Mãe', esc(f.mae)) + linha('Pai', esc(f.pai)) + linha('Cônjuge', esc(f.conjuge)) +
+      linha('Responsável legal', esc(f.responsavel)) + linha('Profissão', esc(f.profissao)))}
+    ${secao('Contato', 'phone', linha('Celular', tel(f.celular)) + linha('Telefone', tel(f.fone)) +
+      linha('Tel. trabalho', tel(f.foneTrabalho)) + linha('Trabalha em', esc(f.trabalho)) +
+      linha('E-mail', f.email ? `<a href="mailto:${esc(f.email)}">${esc(f.email)}</a>` : ''))}
+    ${end.length ? `<section class="ficha-secao"><h3>${icone('map-pin')} Endereço</h3>
+      <p class="ficha-endereco">${end.map(esc).join('<br>')}</p>
+      <a class="link" href="${esc(mapa)}" target="_blank" rel="noopener">${icone('map')} Ver no mapa</a></section>` : ''}
+    <div class="acoes">
+      ${zap ? `<a class="btn whats" href="${esc(zap)}" target="_blank" rel="noopener">${icone('brand-whatsapp')} WhatsApp</a>` : ''}
+      <button type="button" class="btn" data-copiar>${icone('copy')} Copiar dados</button>
+    </div>
+  </div>`;
+}
+
+async function abrirCadastro(id) {
+  const conteudo = html(`<div class="ficha-carregando"><div class="vazio">${icone('loader-2 girar')} Buscando o cadastro no Trier…</div></div>`);
+  const { dlg, fechar } = abrirDialogo('Cadastro do cliente', conteudo);
+  // Clique fora da janela (no fundo escuro) fecha
+  dlg.addEventListener('click', (e) => { if (e.target === dlg) fechar(); });
+  try {
+    const f = await api(`/clientes/${id}/cadastro`);
+    conteudo.innerHTML = fichaHtml(f);
+    $('[data-copiar]', conteudo).onclick = async () => {
+      const texto = [f.nome, f.cpf && `CPF: ${f.cpf}`, (f.celular || f.fone) && `Tel.: ${[f.celular, f.fone].filter(Boolean).join(' / ')}`,
+        ...enderecoCompleto(f)].filter(Boolean).join('\n');
+      try { await navigator.clipboard.writeText(texto); toast('Dados copiados', 'ok'); } catch { toast('Não consegui copiar', 'erro'); }
+    };
+  } catch (e) {
+    // Ponte antiga (antes da 1.5) não tem a rota do cadastro
+    conteudo.innerHTML = /Endereço não encontrado/.test(e.message || '')
+      ? `<div class="alerta atencao">${icone('plug-connected-x')}<span>A ponte deste computador está desatualizada (precisa da versão 1.5). Feche a janela da ponte e abra de novo.</span></div>`
+      : telaErro(e);
+  }
 }
 
 // ---------- Recebimentos (conferência) ----------

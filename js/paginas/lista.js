@@ -7,6 +7,15 @@ import { schemaPorId } from '../modulos/index.js';
 
 const filtrosSalvos = {}; // lembra o filtro de cada módulo enquanto o app está aberto
 
+// Módulos com "porMes" (ex.: temperatura) mostram um mês por vez
+const mesAtual = () => new Date().toLocaleDateString('sv-SE').slice(0, 7);
+function somarMes(mes, n) {
+  const [a, m] = mes.split('-').map(Number);
+  const d = new Date(a, m - 1 + n, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+const nomeMes = (mes) => new Date(`${mes}-15T12:00`).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+
 // Etiqueta colorida opcional na linha (ex.: tipo da troca), para reconhecer de relance
 const etiquetaCor = (e) => (e ? `<span class="etiqueta cor-${e.cor}">${esc(e.texto)}</span> ` : '');
 
@@ -56,8 +65,10 @@ export function linhaRegistro(schema, d) {
 }
 
 export async function paginaLista(main, schema) {
-  const porData = schema.ordem === 'dataHora';
-  const f = (filtrosSalvos[schema.id] ??= { de: '', ate: '', busca: '', soAlerta: false });
+  const porMes = !!schema.porMes;
+  const porData = schema.ordem === 'dataHora' && !porMes;
+  const f = (filtrosSalvos[schema.id] ??= { de: '', ate: '', busca: '', soAlerta: false, mes: mesAtual() });
+  if (porMes) { f.de = `${f.mes}-01`; f.ate = `${f.mes}-31T23:59`; f.busca = ''; f.soAlerta = false; }
 
   main.innerHTML = '';
   main.append(html(`<div class="pagina">
@@ -75,16 +86,25 @@ export async function paginaLista(main, schema) {
       <div class="agenda-lista"><div class="vazio">${icone('loader-2 girar')} Carregando…</div></div>
     </section>
     <h2 class="subtitulo">${icone('history')} Aplicações realizadas</h2>` : ''}
-    ${schema.painel ? `<section class="painel-topo">
+    ${schema.painel ? (() => {
+      const titulo = schema.painel.depois ? `<h2 class="subtitulo">${icone('history')} ${esc(schema.painel.depois)}</h2>` : '';
+      const painel = `<section class="painel-topo">
       <h2>${icone(schema.painel.icone)} ${esc(schema.painel.titulo)} <span class="mudo" data-painel-total></span></h2>
       <div data-painel><div class="vazio">${icone('loader-2 girar')} Carregando…</div></div>
-    </section>
-    <h2 class="subtitulo">${icone('history')} ${esc(schema.painel.depois)}</h2>` : ''}
+    </section>`;
+      // abaixoDoTitulo: o painel fica entre o título "Todos os registros" e o histórico (ex.: clientes das aferições)
+      return schema.painel.abaixoDoTitulo ? titulo + painel : painel + titulo;
+    })() : ''}
     <div class="filtros">
-      <div class="busca">${icone('search')}<input type="search" placeholder="Buscar" value="${esc(f.busca)}" data-f="busca"></div>
+      ${porMes ? `<div class="filtro-mes">
+        <button type="button" class="btn icone" data-mes="-1" title="Mês anterior" aria-label="Mês anterior">${icone('chevron-left')}</button>
+        <input type="month" value="${f.mes}" max="${mesAtual()}" data-f="mes" aria-label="Mês">
+        <button type="button" class="btn icone" data-mes="1" title="Próximo mês" aria-label="Próximo mês" ${f.mes >= mesAtual() ? 'disabled' : ''}>${icone('chevron-right')}</button>
+        ${f.mes !== mesAtual() ? `<button type="button" class="btn pequeno" data-mes="0">Mês atual</button>` : ''}
+      </div>` : `<div class="busca">${icone('search')}<input type="search" placeholder="Buscar" value="${esc(f.busca)}" data-f="busca"></div>`}
       ${porData ? `<label class="filtro-data">De <input type="date" value="${f.de}" data-f="de"></label>
       <label class="filtro-data">Até <input type="date" value="${f.ate}" data-f="ate"></label>` : ''}
-      ${schema.alerta ? `<label class="check pequeno"><input type="checkbox" data-f="soAlerta" ${f.soAlerta ? 'checked' : ''}><span>Só alertas</span></label>` : ''}
+      ${schema.alerta && !porMes ? `<label class="check pequeno"><input type="checkbox" data-f="soAlerta" ${f.soAlerta ? 'checked' : ''}><span>Só alertas</span></label>` : ''}
       <div class="filtros-acoes">
         <button type="button" class="btn" data-csv title="Exportar planilha">${icone('file-spreadsheet')}<span class="some-celular"> CSV</span></button>
         <button type="button" class="btn" data-imprimir title="Imprimir">${icone('printer')}<span class="some-celular"> Imprimir</span></button>
@@ -93,6 +113,9 @@ export async function paginaLista(main, schema) {
     <div class="info-lista mudo"></div>
     <div class="lista"><div class="vazio">${icone('loader-2 girar')} Carregando…</div></div>
   </div>`));
+
+  // Painel entre o título e o histórico: a linha de busca/datas vai para cima dele
+  if (schema.painel?.abaixoDoTitulo) $('.painel-topo', main).before($('.filtros', main));
 
   const listaEl = $('.lista', main);
   const info = $('.info-lista', main);
@@ -109,6 +132,12 @@ export async function paginaLista(main, schema) {
 
   function desenhar() {
     const lista = filtrados();
+    if (porMes) {
+      info.textContent = `${lista.length} registro(s) em ${nomeMes(f.mes)}`;
+      listaEl.classList.add('lista-propria');
+      listaEl.innerHTML = schema.renderLista(lista, { mes: f.mes, editar: podeEditar(schema) });
+      return;
+    }
     const periodo = f.de || f.ate ? ` · ${f.de ? 'de ' + fmtData(f.de) : ''} ${f.ate ? 'até ' + fmtData(f.ate) : ''}` : '';
     info.textContent = `${lista.length} registro(s)${periodo}${!f.de && !f.ate && docs.length >= 300 ? ' · mostrando os 300 mais recentes' : ''}`;
     listaEl.classList.toggle('lista-propria', !!(schema.renderLista && lista.length));
@@ -119,7 +148,7 @@ export async function paginaLista(main, schema) {
 
   async function carregar() {
     try {
-      docs = await db.listar(schema.id, { ordem: schema.ordem, desc: schema.desc, de: f.de, ate: f.ate });
+      docs = await db.listar(schema.id, { ordem: schema.ordem, desc: schema.desc, de: f.de, ate: ateDia(f.ate), ...(porMes ? { limite: 1000 } : {}) });
       if (schema.normalizar) docs = docs.map(schema.normalizar);
       desenhar();
     } catch (e) {
@@ -131,25 +160,45 @@ export async function paginaLista(main, schema) {
   main.querySelectorAll('[data-f]').forEach((el) => {
     el.addEventListener(el.type === 'search' ? 'input' : 'change', () => {
       const k = el.dataset.f;
+      if (k === 'mes') { if (el.value) irParaMes(el.value); return; }
       f[k] = el.type === 'checkbox' ? el.checked : el.value;
-      if (k === 'de' || k === 'ate') carregar();
+      if (k === 'de' || k === 'ate') {
+        carregar();
+        if (schema.painel?.usaPeriodo) carregarPainel(main, schema, f);
+      }
       else desenhar();
     });
   });
-  $('[data-csv]', main).onclick = () => exportarCSV(schema, filtrados(), [f.de, f.ate].filter(Boolean).join('_a_'));
-  $('[data-imprimir]', main).onclick = () =>
-    imprimir(schema, filtrados(), [f.de && `de ${fmtData(f.de)}`, f.ate && `até ${fmtData(f.ate)}`].filter(Boolean).join(' '));
+  // Trocar de mês redesenha a página (botões e limites mudam junto)
+  function irParaMes(mes) {
+    f.mes = mes > mesAtual() ? mesAtual() : mes;
+    paginaLista(main, schema);
+  }
+  main.querySelectorAll('[data-mes]').forEach((b) => {
+    b.onclick = () => irParaMes(b.dataset.mes === '0' ? mesAtual() : somarMes(f.mes, Number(b.dataset.mes)));
+  });
 
-  await Promise.all([carregar(), schema.agenda ? carregarAgenda(main, schema) : null, schema.painel ? carregarPainel(main, schema) : null]);
+  $('[data-csv]', main).onclick = () => exportarCSV(schema, filtrados(), porMes ? f.mes : [f.de, f.ate].filter(Boolean).join('_a_'));
+  $('[data-imprimir]', main).onclick = () => (porMes
+    ? imprimir(schema, filtrados(), nomeMes(f.mes), schema.impressaoMes?.(filtrados(), { mes: f.mes }))
+    : imprimir(schema, filtrados(), [f.de && `de ${fmtData(f.de)}`, f.ate && `até ${fmtData(f.ate)}`].filter(Boolean).join(' ')));
+
+  await Promise.all([carregar(), schema.agenda ? carregarAgenda(main, schema) : null, schema.painel ? carregarPainel(main, schema, f) : null]);
 }
 
 // Painel opcional acima dos registros (ex.: trocas pendentes por farmácia)
-async function carregarPainel(main, schema) {
+// "Até" é um dia: inclui os registros até o fim dele (a data e hora "2026-11-13T15:00" é maior que "2026-11-13")
+const ateDia = (ate) => (ate && ate.length === 10 ? `${ate}T23:59` : ate);
+
+// Painel opcional acima dos registros. Com "usaPeriodo", segue o De/Até da lista (ex.: clientes das aferições)
+async function carregarPainel(main, schema, f = {}) {
   const el = $('[data-painel]', main);
   try {
-    const docs = await db.listar(schema.id, { ordem: schema.ordem, desc: schema.desc, ...schema.painel.consulta });
+    const periodo = schema.painel.usaPeriodo ? { de: f.de, ate: ateDia(f.ate) } : {};
+    const docs = await db.listar(schema.id, { ordem: schema.ordem, desc: schema.desc, ...schema.painel.consulta, ...periodo });
     $('[data-painel-total]', main).textContent = docs.length ? `(${docs.length})` : '';
     el.innerHTML = docs.length ? schema.painel.render(docs) : `<div class="vazio cartao">${esc(schema.painel.vazio)}</div>`;
+    if (docs.length && schema.painel.ligar) await schema.painel.ligar(el, docs, { de: f.de, ate: f.ate }); // painel interativo (ex.: clientes das aferições)
   } catch (e) {
     console.error(e);
     el.innerHTML = `<div class="vazio">${esc(mensagemErro(e))}</div>`;

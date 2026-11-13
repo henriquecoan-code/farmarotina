@@ -15,6 +15,7 @@
 //  - cadclien: cadastro do cliente; prc_juros = % ao dia (juros simples), prc_multa = % de multa.
 //      O Trier só cobra juros depois de alguns dias de atraso (carência, ajustável no config.json).
 //  - cadabcai: abertura/fechamento de cada caixa.
+//  - cadclien.flg_ativo: 'A' ativo / 'I' inativo (não 'S'/'N'); flg_bloqueado 'S'/'N'; flg_spc 'S' = marcado no SPC.
 
 const SEM_ACENTO_DE = 'ÁÀÃÂÄÉÈÊËÍÌÎÏÓÒÕÔÖÚÙÛÜÇÑáàãâäéèêëíìîïóòõôöúùûüçñ';
 const SEM_ACENTO_PARA = 'AAAAAEEEEIIIIOOOOOUUUUCNaaaaaeeeeiiiiooooouuuucn';
@@ -88,7 +89,7 @@ export async function buscarClientes(pool, { rede, filial, carencia = 10 }, busc
   const nome = '%' + texto.split(/\s+/).join('%') + '%';
   const { rows } = await pool.query(`
     SELECT cl.cod_cliente AS id, cl.nom_cliente AS nome, cl.num_cnpj AS cpf, ${telefone} AS telefone,
-           cl.flg_bloqueado = 'S' AS bloqueado, coalesce(cl.flg_ativo, 'S') <> 'N' AS ativo,
+           cl.flg_bloqueado = 'S' AS bloqueado, coalesce(cl.flg_ativo, 'A') <> 'I' AS ativo,
            coalesce(s.aberto, 0) AS aberto, coalesce(s.vencido, 0) AS vencido, coalesce(s.parcelas, 0) AS parcelas,
            coalesce(s.com_juros, 0) AS "comJuros"
       FROM cadclien cl
@@ -108,7 +109,7 @@ export async function buscarClientes(pool, { rede, filial, carencia = 10 }, busc
 export async function cliente(pool, { rede, filial, carencia }, id) {
   const { rows: [cli] } = await pool.query(`
     SELECT cl.cod_cliente AS id, cl.nom_cliente AS nome, cl.num_cnpj AS cpf, ${telefone} AS telefone,
-           cl.flg_bloqueado = 'S' AS bloqueado, coalesce(cl.flg_ativo, 'S') <> 'N' AS ativo, cl.vlr_limite AS limite,
+           cl.flg_bloqueado = 'S' AS bloqueado, coalesce(cl.flg_ativo, 'A') <> 'I' AS ativo, cl.vlr_limite AS limite,
            cl.prc_juros AS "prcJuros", cl.prc_multa AS "prcMulta", cl.dia_vencto AS "diaVencto",
            cl.dat_ultreceb AS "ultimoPagamento", cl.nom_observacao1 AS obs1, cl.nom_observacao2 AS obs2
       FROM cadclien cl WHERE cl.cod_rede = $1 AND cl.cod_cliente = $2`, [rede, id]);
@@ -131,6 +132,25 @@ export async function cliente(pool, { rede, filial, carencia }, id) {
     ORDER BY min(m.data) DESC, min(m.hora) DESC LIMIT 6`, [rede, filial, id]);
 
   return { cliente: cli, parcelas, pagamentos, carencia };
+}
+
+// Ficha de cadastro do cliente (botão "i" na busca do Crediário): identificação, contato e endereço.
+// fica de fora o que é sensível ou interno (senha, cartões, conta bancária, salário, foto).
+const texto = (v) => (typeof v === 'string' ? v.trim() || null : v);
+
+export async function cadastroCliente(pool, { rede }, id) {
+  const { rows: [c] } = await pool.query(`
+    SELECT cod_cliente AS id, nom_cliente AS nome, num_cnpj AS cpf, num_ident AS rg, org_emissor AS "rgOrgao", est_emissor AS "rgUf",
+           dat_nascto AS nascimento, sex_cliente AS sexo, nom_mae AS mae, nom_pai AS pai, nom_conjuge AS conjuge,
+           nom_responlegal AS responsavel, nom_profissao AS profissao, nom_emptrab AS trabalho, num_fonetrab AS "foneTrabalho",
+           num_celular AS celular, num_fone AS fone, nom_email AS email,
+           end_cliente AS endereco, num_endereco AS numero, cmp_endereco AS complemento, bai_cliente AS bairro,
+           cid_cliente AS cidade, est_cliente AS uf, cep_cliente AS cep
+      FROM cadclien WHERE cod_rede = $1 AND cod_cliente = $2`, [rede, id]);
+  if (!c) return null;
+  for (const k of Object.keys(c)) c[k] = texto(c[k]);
+
+  return c;
 }
 
 export async function recebimentos(pool, { rede, filial }, de, ate) {

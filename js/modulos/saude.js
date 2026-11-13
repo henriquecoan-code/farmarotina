@@ -1,4 +1,5 @@
-import { fmtDataHora, fmtNum } from '../util.js';
+import { esc, fmtData, fmtDataHora, fmtNum } from '../util.js';
+import { NOME_FARMACIA } from '../config.js';
 
 // Valores de referência gerais para triagem em farmácia.
 // Ajuste conforme os POPs e a orientação do farmacêutico responsável.
@@ -24,6 +25,35 @@ function alertaAfericao(v) {
   }
   return null;
 }
+
+// Clientes na lista (busca + cartões; ao clicar, histórico com Imprimir e WhatsApp): js/paginas/painel-clientes.js.
+// O painel fica abaixo do título e da linha de busca/datas e segue o período De/Até.
+function painelClientes(schemaId, depois, vazio) {
+  return {
+    titulo: 'Clientes', icone: 'users', depois, consulta: { limite: 2000 }, abaixoDoTitulo: true, usaPeriodo: true, vazio,
+    render: () => '',
+    // Importado na hora para não criar dependência circular entre os módulos
+    ligar: async (el, docs, periodo) => {
+      const m = await import('../paginas/painel-clientes.js');
+      el.innerHTML = m.renderClientes(schemaId);
+      await m.ligarClientes(el, docs, periodo, schemaId);
+    },
+  };
+}
+
+// Cabeçalho com os dados do cliente nas folhas impressas
+function cabecalhoCliente(cliente) {
+  const dados = [
+    cliente.nascimento && `Nascimento: ${fmtData(cliente.nascimento)}`,
+    cliente.cpf && `CPF: ${cliente.cpf}`,
+    cliente.telefone && `Telefone: ${cliente.telefone}`,
+    cliente.condicoes?.length && `Condições: ${cliente.condicoes.join(', ')}`,
+  ].filter(Boolean);
+  return `<p class="impressao-cliente"><b>Cliente: ${esc(cliente.nome)}</b>${dados.length ? `<br>${esc(dados.join(' · '))}` : ''}</p>`;
+}
+const primeiroNome = (n) => String(n || '').trim().split(/\s+/)[0] || '';
+const ola = (cliente) => `Olá${primeiroNome(cliente.nome) ? ', ' + primeiroNome(cliente.nome) : ''}! Aqui é ${NOME_FARMACIA ? `da ${NOME_FARMACIA}` : 'da farmácia'}.`;
+const quem = (d) => String(d.criadoPorNome || '').split(' (')[0];
 
 const pressao = (v) => v.tipo === 'Pressão';
 const glicemia = (v) => v.tipo === 'Glicemia';
@@ -53,7 +83,36 @@ export const afericoes = {
     return '';
   },
   alerta: alertaAfericao,
+  painel: painelClientes('afericoes', 'Todos os registros', 'Nenhuma aferição neste período.'),
+  historico: {
+    tituloFolha: 'Controle de aferições', singular: 'aferição', plural: 'aferições',
+    folha: (c, docs) => folhaAfericoes(c, docs), mensagem: (c, docs) => mensagemAfericoes(c, docs),
+    linhaTitulo: (d) => d.tipo, linhaSub: (d) => fmtDataHora(d.dataHora),
+  },
 };
+
+// ---------- aferições de um cliente: folha para imprimir e mensagem de WhatsApp ----------
+const resultado = (d) => [afericoes.valor(d), d.tipo === 'Glicemia' && d.momento ? d.momento.toLowerCase() : '',
+  d.fc ? `FC ${fmtNum(d.fc, 0)} bpm` : ''].filter(Boolean).join(' · ');
+
+export function folhaAfericoes(cliente, docs) {
+  const lista = [...docs].sort((a, b) => String(a.dataHora).localeCompare(String(b.dataHora)));
+  return `${cabecalhoCliente(cliente)}
+    <table><thead><tr><th>Data e hora</th><th>Tipo</th><th>Resultado</th><th>Observações e orientação</th><th>Aferido por</th></tr></thead>
+    <tbody>${lista.map((d) => {
+      const a = alertaAfericao(d);
+      return `<tr><td>${fmtDataHora(d.dataHora)}</td><td>${esc(d.tipo)}</td><td><b>${esc(resultado(d))}</b>${a ? `<br><small>${esc(a.msg)}</small>` : ''}</td>
+        <td>${esc(d.obs || '')}</td><td>${esc(quem(d))}</td></tr>`;
+    }).join('')}</tbody></table>`;
+}
+
+// Últimas aferições (até 10, da mais recente para a mais antiga) em texto para o WhatsApp
+export function mensagemAfericoes(cliente, docs) {
+  const lista = [...docs].sort((a, b) => String(b.dataHora).localeCompare(String(a.dataHora))).slice(0, 10);
+  return `${ola(cliente)} Seguem as suas aferições registradas aqui na farmácia:\n\n`
+    + lista.map((d) => `• ${fmtDataHora(d.dataHora)}: ${d.tipo} ${resultado(d)}`).join('\n')
+    + '\n\nLeve estes valores na sua próxima consulta. Qualquer dúvida, estamos à disposição!';
+}
 
 const comReceita = (v) => v.receita === true;
 
@@ -109,4 +168,73 @@ export const injetaveis = {
   valor: (d) => d.via || '',
   alerta: (v) => (v.validade && v.dataHora && v.validade < v.dataHora.slice(0, 10)
     ? { nivel: 'perigo', msg: 'Medicamento vencido na data da aplicação.' } : null),
+  // O título "Aplicações realizadas" já vem da seção de agendadas, por isso sem "depois"
+  painel: painelClientes('injetaveis', '', 'Nenhuma aplicação neste período.'),
+  historico: {
+    tituloFolha: 'Histórico de aplicações de injetáveis', singular: 'aplicação', plural: 'aplicações',
+    folha: (c, docs) => folhaInjetaveis(c, docs), mensagem: (c, docs) => mensagemInjetaveis(c, docs),
+    linhaTitulo: (d) => d.medicamento || 'Aplicação',
+    linhaSub: (d) => [fmtDataHora(d.dataHora), doseTxt(d)].filter(Boolean).join(' · '),
+  },
+  // Botão "Imprimir declaração" na página de cada aplicação
+  impressaoRegistro: { rot: 'Imprimir declaração', gerar: (d, cliente) => declaracaoAplicacao(d, cliente) },
 };
+
+// ---------- injetáveis: histórico do cliente, mensagem e declaração de cada aplicação ----------
+const VIAS = { IM: 'Intramuscular (IM)', SC: 'Subcutânea (SC)', ID: 'Intradérmica (ID)' };
+const doseTxt = (d) => (d.dose ? `dose ${d.dose}${d.totalDoses ? ` de ${d.totalDoses}` : ''}` : '');
+const prescricao = (d) => (d.receita === true ? ['Sim', d.prescritor, d.registroProf].filter(Boolean).join(' · ') : d.receita === false ? 'Não' : '');
+
+export function folhaInjetaveis(cliente, docs) {
+  const lista = [...docs].sort((a, b) => String(a.dataHora).localeCompare(String(b.dataHora)));
+  return `${cabecalhoCliente(cliente)}
+    <table><thead><tr><th>Data e hora</th><th>Medicamento e dose</th><th>Via e local</th><th>Lote / validade</th><th>Receita / prescritor</th><th>Aplicado por</th></tr></thead>
+    <tbody>${lista.map((d) => `<tr><td>${fmtDataHora(d.dataHora)}</td>
+      <td><b>${esc(d.medicamento || '—')}</b>${doseTxt(d) ? `<br><small>${esc(doseTxt(d))}</small>` : ''}</td>
+      <td>${esc([d.via, d.local].filter(Boolean).join(' · '))}</td>
+      <td>${esc([d.lote, d.validade && `val. ${fmtData(d.validade)}`].filter(Boolean).join(' · '))}</td>
+      <td>${esc(prescricao(d))}</td><td>${esc(quem(d))}</td></tr>`).join('')}</tbody></table>`;
+}
+
+// Últimas aplicações (até 10) e a próxima agendada, em texto para o WhatsApp
+export function mensagemInjetaveis(cliente, docs) {
+  const lista = [...docs].sort((a, b) => String(b.dataHora).localeCompare(String(a.dataHora)));
+  const proxima = lista.find((d) => d.agendaPendente && d.proxima)?.proxima;
+  return `${ola(cliente)} Segue o histórico das suas aplicações aqui na farmácia:\n\n`
+    + lista.slice(0, 10).map((d) => `• ${fmtDataHora(d.dataHora)}: ${[d.medicamento || 'aplicação', doseTxt(d)].filter(Boolean).join(' · ')}`).join('\n')
+    + (proxima ? `\n\nPróxima aplicação: ${fmtData(proxima)}.` : '')
+    + '\n\nQualquer dúvida, estamos à disposição!';
+}
+
+// Declaração de serviço farmacêutico de uma aplicação (para entregar ao cliente)
+export function declaracaoAplicacao(d, cliente) {
+  const linha = (rot, val) => (val ? `<tr><th>${esc(rot)}</th><td>${esc(val)}</td></tr>` : '');
+  const nasc = cliente.nascimento ? fmtData(cliente.nascimento) : '';
+  return {
+    titulo: 'Declaração de Serviço Farmacêutico',
+    descricao: [NOME_FARMACIA, 'Aplicação de medicamento injetável'].filter(Boolean).join(' · '),
+    corpo: `<p class="declaracao-texto">Declaramos, para os devidos fins, que <b>${esc(cliente.nome || d.clienteNome || '')}</b>${nasc ? `, nascido(a) em ${esc(nasc)},` : ''}
+        recebeu nesta farmácia, em <b>${esc(fmtDataHora(d.dataHora))}</b>, a aplicação do medicamento descrito abaixo.</p>
+      <table class="declaracao-tabela"><tbody>
+        ${linha('Paciente', cliente.nome || d.clienteNome)}
+        ${linha('CPF', cliente.cpf)}
+        ${linha('Data de nascimento', nasc)}
+        ${linha('Medicamento e dose', d.medicamento)}
+        ${linha('Dose', doseTxt(d).replace(/^dose /, ''))}
+        ${linha('Lote', d.lote)}
+        ${linha('Validade', d.validade && fmtData(d.validade))}
+        ${linha('Via de administração', VIAS[d.via] || d.via)}
+        ${linha('Local de aplicação', d.local)}
+        ${linha('Data e hora da aplicação', fmtDataHora(d.dataHora))}
+        ${linha('Receita apresentada', d.receita === true ? 'Sim' : d.receita === false ? 'Não' : '')}
+        ${linha('Prescritor', [d.prescritor, d.registroProf].filter(Boolean).join(' · '))}
+        ${linha('Próxima aplicação', d.agendaPendente && d.proxima ? fmtData(d.proxima) : '')}
+        ${linha('Observações', d.obs)}
+        ${linha('Aplicado por', quem(d))}
+      </tbody></table>`,
+    assinatura: `<div class="assinatura-dupla">
+        <div><span></span>Assinatura do paciente ou responsável</div>
+        <div><span></span>Farmacêutico(a) responsável · CRF nº</div>
+      </div>`,
+  };
+}
