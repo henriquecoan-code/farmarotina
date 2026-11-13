@@ -49,7 +49,8 @@ function criarAnotacoes({ id, nome, novo, icone, categorias, etiquetaAgenda }) {
       { k: 'categoria', rot: 'Categoria', tipo: 'opcoes', opcoes: categorias, lista: true, padrao: categorias[0], lg: 'm' },
       { k: 'texto', rot: 'Anotação', tipo: 'textarea', linhas: 14, obrig: true },
       { k: 'lembrete', rot: 'Lembrar em', tipo: 'datahora', semPadrao: true, lg: 'm', ajuda: 'Opcional' },
-      { k: 'resolvido', rot: 'Resolvido', tipo: 'simnao', lg: 'm', se: (v) => !!v.lembrete },
+      // Também marcado pelo botão "Resolvido" no topo da anotação aberta (js/paginas/caderno.js)
+      { k: 'resolvido', rot: 'Resolvido', tipo: 'simnao', lg: 'm' },
     ],
     titulo: (d) => d.titulo,
     sub: (d) => [d.categoria, fmtDataHora(d.dataHora), String(d.texto || '').slice(0, 60)].filter(Boolean).join(' · '),

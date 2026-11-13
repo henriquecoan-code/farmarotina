@@ -87,8 +87,8 @@ function desenharLista(raiz, schema, e) {
   $('[data-total]', raiz).textContent = `${lista.length} anotação(ões)${lista.length !== (e.docs || []).length ? ` de ${e.docs.length}` : ''}`;
   $('[data-itens]', raiz).innerHTML = lista.length ? lista.map((d) => {
     const a = schema.alerta?.(d);
-    return `<a class="caderno-item ${a ? 'com-lembrete' : ''}" href="#/m/${schema.id}/${esc(d.id)}" data-id="${esc(d.id)}">
-      <div class="caderno-item-topo"><b>${esc(d.titulo || '(sem título)')}</b>${d.nAnexos > 0 ? icone('paperclip') : ''}</div>
+    return `<a class="caderno-item ${a ? 'com-lembrete' : ''} ${d.resolvido ? 'resolvida' : ''}" href="#/m/${schema.id}/${esc(d.id)}" data-id="${esc(d.id)}">
+      <div class="caderno-item-topo"><b>${esc(d.titulo || '(sem título)')}</b>${d.nAnexos > 0 ? icone('paperclip') : ''}${d.resolvido ? `<span class="caderno-ok" title="Resolvida">${icone('check')}</span>` : ''}</div>
       <div class="caderno-item-meta">${d.categoria ? `<span class="etiqueta">${esc(d.categoria)}</span>` : ''}${fmtData(d.dataHora)}
         ${d.lembrete && !d.resolvido ? `<span class="caderno-lembrete ${a ? 'atrasado' : ''}">${icone('bell')} ${fmtData(d.lembrete).slice(0, 5)}${String(d.lembrete).length > 10 ? ` ${String(d.lembrete).slice(11, 16)}` : ''}</span>` : ''}</div>
       <div class="caderno-item-texto">${esc(String(d.texto || '').slice(0, 110))}</div>
@@ -123,8 +123,13 @@ async function abrirEditor(raiz, schema, e, registroId, query) {
   editor.innerHTML = '';
   editor.append(html(`<div class="caderno-editor-topo">
     <a class="voltar so-celular" href="#/m/${schema.id}">${icone('arrow-left')} ${esc(schema.nome)}</a>
-    <div class="caderno-editor-titulo"><h2>${novo ? esc(schema.novo) : 'Anotação'}</h2>
-      ${!novo && podeExcluir() ? `<button type="button" class="btn pequeno perigo" data-excluir>${icone('trash')} Excluir</button>` : ''}</div>
+    <div class="caderno-editor-titulo"><h2>${novo ? esc(schema.novo) : 'Anotação'}${!novo && dados.resolvido ? ' <span class="selo-texto ok">Resolvida</span>' : ''}</h2>
+      <div class="botoes">
+        ${!novo && editavel ? (dados.resolvido
+          ? `<button type="button" class="btn pequeno" data-resolver title="Voltar a anotação para pendente">${icone('arrow-back-up')} Reabrir</button>`
+          : `<button type="button" class="btn pequeno ok" data-resolver title="Marcar como resolvida">${icone('check')} Resolvido</button>`) : ''}
+        ${!novo && podeExcluir() ? `<button type="button" class="btn pequeno perigo" data-excluir>${icone('trash')} Excluir</button>` : ''}
+      </div></div>
     ${novo ? '' : `<div class="mudo pequeno">Registrada por ${esc(dados.criadoPorNome || '—')} em ${fmtDataHora(dados.criadoLocal)}${dados.atualizadoLocal && dados.atualizadoLocal !== dados.criadoLocal ? ` · alterada por ${esc(dados.atualizadoPorNome || '—')} em ${fmtDataHora(dados.atualizadoLocal)}` : ''}</div>`}
   </div>`));
 
@@ -157,6 +162,24 @@ async function abrirEditor(raiz, schema, e, registroId, query) {
     editor.append(anexos);
     renderAnexos(anexos, schema.id, registroId, { podeAnexar: editavel }).catch(() => {});
   }
+
+  // Resolvido / Reabrir: grava na hora, sem precisar salvar o formulário
+  const resolver = $('[data-resolver]', editor);
+  if (resolver) resolver.onclick = async () => {
+    resolver.disabled = true;
+    const resolvido = !dados.resolvido;
+    try {
+      await db.atualizar(schema.id, registroId, { resolvido });
+      toast(resolvido ? 'Anotação marcada como resolvida' : 'Anotação reaberta', 'ok');
+      const doc = (e.docs || []).find((d) => d.id === registroId);
+      if (doc) doc.resolvido = resolvido;
+      desenharLista(raiz, schema, e);
+      await abrirEditor(raiz, schema, e, registroId, query);
+    } catch (err) {
+      resolver.disabled = false;
+      toast(mensagemErro(err), 'erro');
+    }
+  };
 
   const excluir = $('[data-excluir]', editor);
   if (excluir) excluir.onclick = async () => {

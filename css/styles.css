@@ -769,3 +769,11 @@ input[type=checkbox], input[type=radio] { width: auto; min-height: 0; accent-col
 .area-impressao .declaracao-tabela th { width: 34%; background: #f3f3f3; font-weight: 600; }
 .area-impressao .assinatura-dupla { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 50px; font-size: 11px; text-align: center; break-inside: avoid; }
 .area-impressao .assinatura-dupla span { display: block; border-top: 1px solid #000; margin-bottom: 4px; }
+
+/* ---------- caderno: anotação resolvida ---------- */
+.btn.ok { color: var(--ok); border-color: var(--ok); }
+.btn.ok:hover { background: var(--ok-bg); }
+.caderno-editor-titulo .botoes { display: flex; gap: 6px; flex-wrap: wrap; }
+.caderno-editor-titulo h2 .selo-texto { font-size: 12px; vertical-align: middle; margin-left: 4px; }
+.caderno-item.resolvida b { color: var(--texto-2); }
+.caderno-item .caderno-ok { color: var(--ok); display: inline-flex; margin-left: auto; }
