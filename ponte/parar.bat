@@ -1,10 +1,13 @@
 @echo off
 rem Encerra a ponte do FarmaRotina (inclusive a que roda oculta pelo iniciar-oculto.vbs).
 cd /d "%~dp0"
-rem Avisa o iniciar.bat para não reiniciar e encerra o programa que atende na porta da ponte (3790)
+rem Porta da ponte: portaPonte do config (lida pelo porta.js) ou 3790
+set PORTA=3790
+for /f %%n in ('node porta.js 2^>nul') do set PORTA=%%n
+rem Avisa o iniciar.bat para não reiniciar e encerra o programa que atende nessa porta
 echo.> parar.flag
 set achou=
-for /f "tokens=5" %%p in ('netstat -ano ^| findstr /r /c:":3790 .*LISTENING"') do (
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr /r /c:":%PORTA% .*LISTENING"') do (
   taskkill /pid %%p /f >nul 2>&1
   set achou=1
 )
