@@ -369,3 +369,68 @@ export async function dre(pool, { rede, filial }, de, ate) {
   ]);
   return { de, ate, vendas: vendas.rows, cmv: cmv.rows, despesas: despesas.rows, entradas: entradas.rows, fornecedores: fornecedores.rows };
 }
+
+// ---------- Pedido de compras (compras/pedido.html) ----------
+// Uma linha por produto ativo que tem estoque ou vendeu no último ano (ou no período escolhido), com o que as
+// abas do pedido precisam: saldo, mínimo e demanda do Trier, curva, vendas em 7/30/90/180 dias e no período,
+// custo e o fator (Fat) da última compra de cada fornecedor. As contas (sugestão, cobertura…) são feitas no navegador.
+// Vendas = só notas de venda (tip_venda 'V'), como a "Seleção III: Vendas" do relatório Sugestão de Compras.
+export async function comprasProdutos(pool, { rede, filial }, de, ate) {
+  const p = [rede, filial, de, ate];
+  const [produtos, labs, grupos, deptos, categs, fornecs] = await Promise.all([
+    pool.query(`
+      WITH v AS (
+        SELECT i.cod_reduzido,
+               sum(i.qtd_produto) FILTER (WHERE i.dat_emissao >= $3::date AND i.dat_emissao < $4::date + 1) AS periodo,
+               sum(i.qtd_produto) FILTER (WHERE i.dat_emissao >= current_date - 6) AS v7,
+               sum(i.qtd_produto) FILTER (WHERE i.dat_emissao >= current_date - 29) AS v30,
+               sum(i.qtd_produto) FILTER (WHERE i.dat_emissao >= current_date - 89) AS v90,
+               sum(i.qtd_produto) FILTER (WHERE i.dat_emissao >= current_date - 179) AS v180,
+               sum(i.qtd_produto) AS v365,
+               max(i.dat_emissao) AS ult
+          FROM cadivend i
+          JOIN cadcvend c ON c.cod_rede = i.cod_rede AND c.cod_filial = i.cod_filial AND c.num_nota = i.num_nota
+         WHERE i.cod_rede = $1 AND i.cod_filial = $2 AND i.flg_excluido IS NULL AND c.flg_excluido IS NULL AND c.tip_venda = 'V'
+           AND i.dat_emissao >= least($3::date, current_date - 364)
+         GROUP BY 1),
+      f AS (
+        SELECT DISTINCT ON (cod_reduzido, cod_fornec) cod_reduzido, cod_fornec, qtd_fator, dat_entrada
+          FROM cadicomp
+         WHERE cod_rede = $1 AND cod_filial = $2 AND dat_entrada >= current_date - 1095
+         ORDER BY cod_reduzido, cod_fornec, dat_entrada DESC, num_seqnota DESC),
+      fa AS (
+        SELECT cod_reduzido, json_agg(json_build_array(cod_fornec, coalesce(qtd_fator, 1), dat_entrada) ORDER BY dat_entrada DESC) AS forn
+          FROM f GROUP BY 1)
+      SELECT p.cod_reduzido AS id, p.nom_produto AS nome,
+             (SELECT coalesce(nullif(b.gtin, ''), b.cod_barra::text) FROM cadcdbar b
+               WHERE b.cod_rede = p.cod_rede AND b.cod_reduzido = p.cod_reduzido
+               ORDER BY b.flg_principal IS TRUE DESC, coalesce(b.qtd_fator, 1), b.dat_cadastro DESC NULLS LAST LIMIT 1) AS ean,
+             p.cod_laborat AS lab, p.cod_grupo AS grupo, p.cod_depto AS depto, p.cod_categoria AS cat,
+             coalesce(nullif(e.tip_curva, ''), '') AS curva, coalesce(e.qtd_estoque, 0) AS saldo,
+             coalesce(e.est_minimo, 0) AS minimo, coalesce(e.qtd_demanda, 0) AS demanda,
+             ${custoSql} AS custo,
+             coalesce(v.periodo, 0) AS periodo, coalesce(v.v7, 0) AS v7, coalesce(v.v30, 0) AS v30,
+             coalesce(v.v90, 0) AS v90, coalesce(v.v180, 0) AS v180, coalesce(v.v365, 0) AS v365,
+             coalesce(v.ult, e.dat_ultsai) AS "ultVenda", e.dat_ultent AS "ultEntrada", e.cod_ultfornec AS "ultFornec",
+             fa.forn
+        FROM cadprodu p
+        JOIN cadestoq e ON e.cod_rede = p.cod_rede AND e.cod_filial = $2 AND e.cod_reduzido = p.cod_reduzido
+        LEFT JOIN v ON v.cod_reduzido = p.cod_reduzido
+        LEFT JOIN fa ON fa.cod_reduzido = p.cod_reduzido
+       WHERE p.cod_rede = $1 AND p.flg_ativo = 'A' AND p.flg_excluido IS NULL AND coalesce(p.flg_suspcompras, 'N') <> 'S'
+         AND (coalesce(e.qtd_estoque, 0) <> 0 OR v.cod_reduzido IS NOT NULL)
+       ORDER BY p.nom_produto`, p),
+    pool.query('SELECT cod_laborat AS id, nom_laborat AS nome FROM cadlabor WHERE cod_rede = $1', [rede]),
+    pool.query('SELECT cod_grupo AS id, nom_grupo AS nome FROM cadgrpro WHERE cod_rede = $1', [rede]),
+    pool.query('SELECT cod_depto AS id, nom_depto AS nome FROM caddepto WHERE cod_rede = $1', [rede]),
+    pool.query('SELECT cod_categoria AS id, nom_categoria AS nome FROM cadcateg WHERE cod_rede = $1', [rede]),
+    pool.query(`SELECT cod_fornec AS id, nom_fornec AS nome FROM cadforne
+                 WHERE cod_rede = $1 AND cod_fornec IN (SELECT DISTINCT cod_fornec FROM cadicomp
+                   WHERE cod_rede = $1 AND cod_filial = $2 AND dat_entrada >= current_date - 1095)`, [rede, filial]),
+  ]);
+  const mapa = (r) => Object.fromEntries(r.rows.map((x) => [x.id, String(x.nome || '').trim()]));
+  return {
+    de, ate, produtos: produtos.rows,
+    laboratorios: mapa(labs), grupos: mapa(grupos), departamentos: mapa(deptos), categorias: mapa(categs), fornecedores: mapa(fornecs),
+  };
+}

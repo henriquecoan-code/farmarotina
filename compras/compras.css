@@ -73,3 +73,52 @@
   .historico { grid-template-columns: 1fr; }
   .filtros-historico { position: static; max-height: none; }
 }
+
+/* ---------- Pedido: abas, parâmetros e filtros ---------- */
+.pedido { display: flex; flex-direction: column; gap: 12px; }
+.abas-pedido { display: flex; gap: 4px; border-bottom: 1px solid var(--borda); overflow-x: auto; }
+.abas-pedido button {
+  display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font: inherit; font-size: 14px; cursor: pointer;
+  padding: 9px 14px; border: 0; border-bottom: 3px solid transparent; background: none; color: var(--texto-2);
+}
+.abas-pedido button:hover { color: var(--texto); }
+.abas-pedido button.ativa { color: var(--pri-escuro); border-bottom-color: var(--pri); font-weight: 600; }
+.parametros { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; font-size: 14px; }
+.parametros input, .parametros select { width: auto; min-height: 34px; padding: 4px 8px; }
+.parametros .num-curto { width: 76px; }
+.parametros .num-medio { width: 110px; }
+.parametros .separador { flex-basis: 100%; height: 0; }
+.chip-dia {
+  font: inherit; font-size: 13px; cursor: pointer; padding: 4px 10px; border-radius: 999px;
+  border: 1px solid var(--borda-forte); background: var(--superficie); color: var(--texto-2);
+}
+.chip-dia.ativo { background: var(--pri-claro); color: var(--pri-escuro); border-color: var(--pri); }
+.filtros-pedido select, .filtros-pedido .filtro-texto input { width: auto; max-width: 210px; min-height: 36px; padding: 5px 8px; font-size: 13px; }
+.filtro-texto { position: relative; display: flex; align-items: center; }
+.filtro-texto > .ti { position: absolute; left: 8px; color: var(--mudo); pointer-events: none; }
+.filtros-pedido .filtro-texto input { padding-left: 28px; }
+.barra-acoes .btn { min-height: 36px; }
+.metrica-sub { font-size: 12px; color: var(--mudo); }
+.metrica-sub.negativo { color: var(--perigo); font-weight: 600; }
+.metrica-sub.positivo { color: var(--ok); font-weight: 600; }
+.tabela-pedido td.num, .tabela-pedido th.num { text-align: right; white-space: nowrap; }
+.tabela-pedido .fat {
+  font: inherit; font-size: 13px; cursor: pointer; min-width: 30px; padding: 1px 6px; border-radius: 6px;
+  border: 1px dashed var(--borda-forte); background: none; color: inherit;
+}
+.tabela-pedido .fat.caixa { border-style: solid; border-color: var(--info); color: var(--info); font-weight: 600; }
+.faixa { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--superficie-2); }
+.faixa-zerado, .faixa-critica { background: var(--perigo-bg); color: var(--perigo); }
+.faixa-baixa { background: var(--atencao-bg); color: var(--atencao); }
+.faixa-ok { background: var(--ok-bg); color: var(--ok); }
+.faixa-excesso { background: var(--info-bg); color: var(--info); }
+.faixa-card { font: inherit; text-align: left; cursor: pointer; }
+.faixa-card.perigo .metrica-valor { color: var(--perigo); }
+.faixa-card.atencao .metrica-valor { color: var(--atencao); }
+.faixa-card.ok .metrica-valor { color: var(--ok); }
+.faixa-card.info .metrica-valor { color: var(--info); }
+.faixa-card.ativa { border-color: var(--pri); box-shadow: inset 0 0 0 1px var(--pri); }
+@media (max-width: 860px) {
+  .filtros-pedido select, .filtros-pedido .filtro-texto { flex: 1 1 45%; max-width: none; }
+  .filtros-pedido .filtro-texto input { width: 100%; max-width: none; }
+}

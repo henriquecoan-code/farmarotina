@@ -8,6 +8,7 @@ import { demoCrediario } from './crediario-demo.js';
 import { demoProdutos } from './produtos-demo.js';
 import { demoOrcamento } from './orcamento-demo.js';
 import { demoDre } from './dre-demo.js';
+import { demoPedido } from '../../compras/js/pedido-demo.js';
 
 // Módulos de consulta. Para criar um novo: página .html + js nesta pasta, rota na ponte e um item aqui
 // (e o módulo em js/perm.js com grupo: 'consultas').
@@ -35,7 +36,7 @@ export function iniciar({ atual, modulos, titulo, montar }) {
 export class PonteDesligada extends Error {}
 
 // Dados fictícios no modo demonstração, para testar sem a ponte
-const DEMOS = { crediario: demoCrediario, produtos: demoProdutos, orcamento: demoOrcamento, dre: demoDre };
+const DEMOS = { crediario: demoCrediario, produtos: demoProdutos, orcamento: demoOrcamento, dre: demoDre, pedido: demoPedido };
 
 export async function api(caminho, demo) {
   if (DEMO) {

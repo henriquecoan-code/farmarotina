@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 import { lerConfig, criarPool, CAMINHO_CONFIG } from './banco.js';
 import * as consultas from './consultas.js';
 
-const VERSAO = '1.5';
+const VERSAO = '1.6';
 const cfg = lerConfig();
 const PORTA = cfg.portaPonte || 3790;
 const PROJETO = cfg.projetoFirebase || 'farmarotina-ed7c3';
@@ -78,8 +78,8 @@ async function responder(url, req) {
     return { ok: true, versao: VERSAO, filial: opcoes.filial, banco };
   }
   // Permissão exigida por cada rota (módulo do FarmaRotina)
-  const ROTAS = { clientes: 'crediario', recebimentos: 'crediario', atrasados: 'crediario', produtos: 'produtos', orcamento: 'orcamento', dre: 'dre' };
-  const NOMES = { crediario: 'o Crediário', produtos: 'a consulta de Produtos', orcamento: 'o Orçamento', dre: 'o DRE' };
+  const ROTAS = { clientes: 'crediario', recebimentos: 'crediario', atrasados: 'crediario', produtos: 'produtos', orcamento: 'orcamento', dre: 'dre', compras: 'pedido' };
+  const NOMES = { crediario: 'o Crediário', produtos: 'a consulta de Produtos', orcamento: 'o Orçamento', dre: 'o DRE', pedido: 'o Pedido de compras' };
   // O módulo 'dre' não existe em js/perm.js (ninguém o recebe): na prática só o administrador passa
   const modulo = ROTAS[partes[0]];
   if (!modulo) throw new ErroHttp(404, 'Endereço não encontrado.');
@@ -124,6 +124,14 @@ async function responder(url, req) {
     const meses = (Number(ate.slice(0, 4)) - Number(de.slice(0, 4))) * 12 + Number(ate.slice(5)) - Number(de.slice(5)) + 1;
     if (meses > 12) throw new ErroHttp(400, 'Escolha no máximo 12 meses.');
     return consultas.dre(pool, opcoes, de, ate);
+  }
+  if (partes[0] === 'compras' && partes[1] === 'produtos') {
+    // Período das vendas usado na sugestão (padrão: últimos 30 dias). No máximo 1 ano.
+    const ate = url.searchParams.get('ate') || hojeLocal();
+    const de = url.searchParams.get('de') || new Date(Date.parse(ate) - 29 * 864e5).toISOString().slice(0, 10);
+    if (!DATA.test(de) || !DATA.test(ate) || ate < de) throw new ErroHttp(400, 'Datas inválidas.');
+    if (Date.parse(ate) - Date.parse(de) > 366 * 864e5) throw new ErroHttp(400, 'Escolha um período de no máximo 1 ano.');
+    return consultas.comprasProdutos(pool, opcoes, de, ate);
   }
   if (partes[0] === 'atrasados') {
     const dias = Math.max(1, Math.min(3650, Number(url.searchParams.get('dias')) || 1));

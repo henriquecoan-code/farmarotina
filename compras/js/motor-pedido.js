@@ -1,7 +1,8 @@
 // Motor do pedido: mesma lógica do motor.py do sistema antigo, agora no navegador.
 //
 // Regras salvas por EAN (prioridade sobre a marca):
-//   incluir_sempre, excluir_sempre, quantidade_fixa, observacao
+//   incluir_sempre, excluir_sempre, quantidade_fixa, observacao, fat_fixo (faturação que vale para o produto,
+//   quando a da última compra não serve — cada fornecedor pode vender unitário ou só a caixa fechada)
 // Regras por marca/laboratório: hoje só "excluir_sempre" (todos os produtos da marca)
 // Regras gerais (config): mínimo por curva A/B/C e a partir de qual Fat o produto é "encartelado".
 import { numero } from './comum.js';
@@ -67,18 +68,21 @@ export function calcularSugestao(row, config) {
   const necessidade = alvo - row.saldo;
   if (necessidade <= 0) return [null, `Estoque já no nível ideal (saldo ${Math.trunc(row.saldo)} >= alvo ${Math.trunc(alvo)})`];
 
-  const fat = row.fat > 0 ? row.fat : 1;
-  const quantidade = Math.trunc(Math.ceil(necessidade / fat) * fat);
-  if (quantidade <= 0) return [null, 'Quantidade calculada zerou após arredondamento'];
-  return [quantidade, `Precisa de ${Math.trunc(necessidade)}, arredondado p/ múltiplo do Fat (${Math.trunc(fat)})`];
+  // Produto vendido por faturação (caixa/display com várias unidades): no pedido 1 = 1 caixa fechada.
+  // Vai sempre 1; a quantidade é conferida antes de mandar o pedido ao fornecedor.
+  if (row.fat > 1) return [1, `Vende por caixa (Fat=${Math.trunc(row.fat)}): pede 1 caixa · precisa de ${Math.ceil(necessidade)} un`];
+  const quantidade = Math.ceil(necessidade);
+  return [quantidade, `Precisa de ${quantidade} (alvo ${Math.trunc(alvo)} − saldo ${Math.trunc(row.saldo)})`];
 }
 
 // Lista final: sugestão automática + regra da marca (genérica) + regra do EAN (específica, tem a última palavra)
 export function montarLista(dados, config, regras, regrasMarca) {
-  return dados.map((row) => {
+  return dados.map((original) => {
+    const regra = regras.get(original.ean) || {};
+    const fatFixo = Number(regra.fat_fixo) > 0 ? Number(regra.fat_fixo) : null;
+    const row = fatFixo ? { ...original, fat: fatFixo } : original;
     const [sugerida, motivo] = calcularSugestao(row, config);
     const regraMarca = regrasMarca.get(normMarca(row.marca));
-    const regra = regras.get(row.ean) || {};
 
     const valida = sugerida !== null;
     let incluir = valida;
@@ -109,6 +113,7 @@ export function montarLista(dados, config, regras, regrasMarca) {
     if (regra.observacao) observacao = regra.observacao;
 
     return {
+      ...(row.id !== undefined ? { id: row.id } : {}), fat_fixo: !!fatFixo,
       ean: row.ean, produto: row.produto, marca: row.marca, curva: row.curva,
       saldo: Math.trunc(row.saldo), estoque_minimo: Math.trunc(row.estoque_minimo),
       demanda: Math.trunc(row.demanda), fat: Math.trunc(row.fat),
