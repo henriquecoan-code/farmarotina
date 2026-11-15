@@ -94,7 +94,7 @@ Usam o mesmo login do FarmaRotina e aparecem no menu lateral para quem tem o mó
 - **Pedido de compras** (`compras/pedido.html`), vindo do antigo "Revisão de Pedido" em Python:
   - lê os produtos direto do Trier pela ponte (rota `/compras/produtos`, ponte 1.6), sem precisar do Excel. Sem ponte, a aba Sugestão ainda aceita o relatório **Sugestão de Compras** (.xls);
   - **abas:**
-    - **Sugestão** (o diário): produtos que venderam no período (padrão: só o dia de hoje), quantidade = vendas do período, como o relatório do Trier, com as regras gerais (mínimo por curva A/B/C, encartelado) e as exceções por marca e por produto ("Lembrar");
+    - **Sugestão** (o diário): produtos que venderam no período (padrão: só o dia de hoje), quantidade = mínimo − saldo (mínimo = o maior entre o estoque mínimo do Trier e o mínimo da curva A/B/C; encartelado) e as exceções por marca e por produto ("Lembrar");
     - **Pedido curto:** zerados que venderam nos últimos N dias (qualquer número; atalhos 7, 30, 90 e 180), todos com 1;
     - **Indústria:** escolha o laboratório ou o fornecedor e a demanda em dias (30, 45, 60, 90…); quantidade = venda média por dia × dias − saldo. Mostra o total a custo, o desconto e quanto falta para o pedido mínimo (salvos por indústria);
     - **Parados:** com estoque e sem venda há X dias, com o valor parado;

@@ -378,7 +378,7 @@ function painelParametros() {
         <span class="mudo">Vendas de</span><input type="date" data-p="de" value="${e.de}" max="${hoje()}"><span class="mudo">até</span><input type="date" data-p="ate" value="${e.ate}" max="${hoje()}">
         <button type="button" class="btn" data-ler-periodo>${icone('refresh')} Aplicar período</button>
         <label class="check pequeno"><input type="checkbox" data-p="sugMinimo" ${e.sugMinimo ? 'checked' : ''}><span>Incluir também os abaixo do estoque mínimo que não venderam no período</span></label>
-        <span class="mudo pequeno">Quantidade = o maior entre o mínimo da curva, o estoque mínimo do Trier e as vendas do período, menos o saldo (com as regras de Fat).</span>
+        <span class="mudo pequeno">Entram os produtos que venderam no período. Quantidade = mínimo − saldo (mínimo = o maior entre o estoque mínimo do Trier e o da curva; Fat maior que 1 pede 1).</span>
         ${blocoExcel(false)}</div>`;
     case 'curto':
       return `<div class="parametros cartao"><span>Zerados (saldo ≤ 0) que venderam nos últimos</span>
