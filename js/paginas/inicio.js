@@ -8,7 +8,11 @@ import { descreverFrequencia } from '../modulos/rotinas.js';
 import {
   listarAgendadas, situacao, diasAte, telefones, cartaoAgenda, cartaoPrazo, botaoWhatsapp, mensagemRetorno,
 } from '../agenda.js';
-import { esc, html, icone, hoje, fmtNum, fmtDataHora } from '../util.js';
+import { pedidosParaInicio, ehNovo, rotuloStatus, horaLocal, ENTREGA } from '../loja.js';
+import '../loja-pedido.js'; // janela do pedido ao clicar num cartão de pedido da Agenda
+import { esc, html, icone, hoje, fmtNum, fmtDataHora, fmtMoeda } from '../util.js';
+
+const URL_LOJA = 'loja/pedidos.html';
 
 // "hoje 08:00" ou "02/10 16:00"
 function quando(iso) {
@@ -19,13 +23,26 @@ function quando(iso) {
 const DIAS_AGENDA = 7;
 const resumo = (s, n = 80) => (String(s || '').length > n ? String(s).slice(0, n - 1) + '…' : String(s || ''));
 
-// Tudo que tem prazo, num lugar só: aplicações agendadas, lembretes, retornos de atendimento e rotinas.
+// Tudo que tem prazo, num lugar só: aplicações agendadas, lembretes, retornos de atendimento, rotinas
+// e os pedidos em aberto da loja online (entram com a data em que foram feitos e saem ao serem entregues).
 // (As trocas ficam de fora: o acompanhamento delas é no painel da tela de Trocas.)
-async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, rotinasAtivas }) {
-  if (!agendadas && !notasRec && !atendAbertos && !rotinasAtivas) return;
+async function montarAgenda(secao, { agendadas, notasRec, atendAbertos, rotinasAtivas, pedidosLoja }) {
+  if (!agendadas && !notasRec && !atendAbertos && !rotinasAtivas && !pedidosLoja) return;
   secao.hidden = false;
   const tels = await telefones().catch(() => new Map());
   const itens = [];
+
+  for (const p of pedidosLoja || []) {
+    const data = horaLocal(p.criado_em);
+    itens.push({ data: data.slice(0, 10), html: cartaoPrazo({
+      data, etiqueta: ehNovo(p) ? 'Pedido novo' : 'Pedido', genero: 'o',
+      titulo: `Nº ${p.numero} · ${p.cliente_nome || 'Cliente'}`,
+      sub: [rotuloStatus(p), ENTREGA[p.entrega] || p.entrega, fmtMoeda(p.total), p.tem_prescricao && 'conferir receita'].filter(Boolean).join(' · '),
+      href: `${URL_LOJA}#/p/${encodeURIComponent(p.id)}`,
+      atributos: `data-pedido-loja="${esc(p.id)}"`, // o clique abre a janela do pedido (js/loja-pedido.js)
+      acoes: `<a class="btn icone" href="${URL_LOJA}#/p/${encodeURIComponent(p.id)}" title="Abrir o pedido" aria-label="Abrir o pedido">${icone('package')}<span class="so-celular">Abrir</span></a>`,
+    }) });
+  }
 
   for (const d of agendadas || []) {
     itens.push({ data: d.proxima, html: cartaoAgenda('injetaveis', d, tels.get(d.clienteId), 'Aplicação') });
@@ -102,7 +119,7 @@ export async function paginaInicio(main) {
   const avisos = pagina.querySelector('.avisos');
   const dia = hoje();
 
-  const [temps, afericoesHoje, atendAbertos, notasRec, inj, agendadas, trocasPend, rotinasTodas] = await Promise.all([
+  const [temps, afericoesHoje, atendAbertos, notasRec, inj, agendadas, trocasPend, rotinasTodas, loja] = await Promise.all([
     podeVer('temperatura') ? seguro(db.listar('temperatura', { limite: 30 })) : null,
     podeVer('saude') ? seguro(db.listar('afericoes', { de: dia, ate: dia })) : null,
     podeVer('atendimento') ? seguro(db.listar('atendimentos', { onde: ['status', 'Aberto'] })) : null,
@@ -112,10 +129,25 @@ export async function paginaInicio(main) {
     podeVer('saude') ? seguro(listarAgendadas('injetaveis')) : null,
     podeVer('trocas') ? seguro(db.listar('trocas', { onde: ['situacao', 'Pendente'] })) : null,
     podeVer('rotinas') ? seguro(db.listar('rotinas', { ordem: 'proxima', desc: false, limite: 200 })) : null,
+    pedidosParaInicio(), // null (sem o módulo) ou { conectada, pedidos }; não lança erro
   ]);
   const rotinasAtivas = rotinasTodas && rotinasTodas.filter((r) => r.ativa !== false && r.proxima);
+  const pedidosLoja = loja?.conectada ? loja.pedidos : null;
 
   const cards = [];
+  if (loja && !loja.conectada) {
+    avisos.append(html(`<a class="alerta info" href="${URL_LOJA}">${icone('building-store')}<span>Conecte a loja online neste aparelho para os pedidos aparecerem aqui na Agenda.</span>${icone('chevron-right')}</a>`));
+  }
+  if (pedidosLoja) {
+    const novos = pedidosLoja.filter(ehNovo).length;
+    if (novos) {
+      avisos.append(html(`<a class="alerta atencao" href="${URL_LOJA}">${icone('shopping-bag')}<span>${novos === 1 ? 'Há 1 pedido novo' : `Há ${novos} pedidos novos`} da loja online para separar.</span>${icone('chevron-right')}</a>`));
+    }
+    cards.push(cartaoNumero({
+      rotulo: 'Pedidos da loja', valor: pedidosLoja.length,
+      selo: loja.erro ? 'Sem conexão com a loja' : novos ? `${novos} novo(s)` : 'Nenhum novo', nivel: loja.erro || novos ? 'atencao' : 'ok', href: URL_LOJA,
+    }));
+  }
   if (temps) {
     const regs = temps.map(normalizarTemp);
     const prefixo = { Geladeira: 'gel', Ambiente: 'amb' };
@@ -182,7 +214,7 @@ export async function paginaInicio(main) {
   }
   metricas.innerHTML = cards.join('');
 
-  await montarAgenda(pagina.querySelector('[data-agenda]'), { agendadas, notasRec, atendAbertos, rotinasAtivas });
+  await montarAgenda(pagina.querySelector('[data-agenda]'), { agendadas, notasRec, atendAbertos, rotinasAtivas, pedidosLoja });
 
   const recentes = [
     ...(afericoesHoje || []).map((d) => ({ s: schemaPorId('afericoes'), d })),

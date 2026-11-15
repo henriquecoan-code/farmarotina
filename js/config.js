@@ -22,3 +22,9 @@ export const DEMO = !firebaseConfig.projectId;
 
 // Ponte do crediário: programa (pasta ponte/) que roda no computador da farmácia e lê o banco do Trier
 export const PONTE_URL = 'http://127.0.0.1:3790';
+
+// Loja online (site da farmácia, no Supabase): os pedidos aparecem em loja/pedidos.html e na Agenda.
+// A chave abaixo é a pública (a mesma que o site usa no navegador); quem protege os pedidos são as
+// regras do banco (RLS) e o login de alguém da equipe da loja. Deixe a URL vazia para desligar.
+export const LOJA_URL = 'https://ytcqzpasqydnbhxmrkrc.supabase.co';
+export const LOJA_CHAVE = 'sb_publishable_ioyB0TpE0wC5K6pILX8g0w_qd9c6arD';

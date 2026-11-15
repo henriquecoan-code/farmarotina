@@ -11,6 +11,8 @@ export const MODULOS = [
   { id: 'rotinas', nome: 'Rotinas (mensais, semanais…)' },
   { id: 'pedido', nome: 'Pedido de compras' },
   { id: 'historico', nome: 'Histórico de vendas' },
+  // Pedidos do site da farmácia (ficam no Supabase da loja; página separada loja/pedidos.html)
+  { id: 'loja', nome: 'Pedidos da loja online' },
   // Consultas ao sistema da farmácia (Trier), na página separada consultas/consulta.html
   { id: 'crediario', nome: 'Crediário (consulta no Trier)', grupo: 'consultas' },
   { id: 'produtos', nome: 'Produtos (consulta no Trier)', grupo: 'consultas' },
@@ -19,7 +21,7 @@ export const MODULOS = [
 
 export const PERFIS = {
   'Farmacêutico': MODULOS.map((m) => m.id),
-  'Atendente': ['clientes', 'temperatura', 'atendimento', 'trocas', 'notas', 'fornecedores', 'pops', 'orcamento'],
+  'Atendente': ['clientes', 'temperatura', 'atendimento', 'trocas', 'notas', 'fornecedores', 'pops', 'orcamento', 'loja'],
 };
 
 let perfil = null;

@@ -13,6 +13,7 @@ const PAGINAS_EXTRAS = [
     modulos: MODULOS.filter((m) => m.grupo === 'consultas').map((m) => m.id) },
   { id: 'pedido', rota: 'pedido', href: 'compras/pedido.html', icone: 'shopping-cart', nome: 'Pedido de compras' },
   { id: 'historico', rota: 'historico', href: 'compras/historico.html', icone: 'chart-line', nome: 'Histórico de vendas' },
+  { id: 'loja', rota: 'loja', href: 'loja/pedidos.html', icone: 'building-store', nome: 'Pedidos da loja' },
 ];
 
 export const prefs = () => obterPerfilAtual()?.preferencias || {};

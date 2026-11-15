@@ -1,0 +1,46 @@
+/* Pedidos da loja online. Usa as cores e componentes de ../css/styles.css */
+
+.pagina.larga { max-width: 1200px; }
+.loja-conta { font-size: 13px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.tabela-rolagem { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 12px; }
+.tabela-loja {
+  width: 100%; border-collapse: collapse; font-size: 14px; background: var(--superficie);
+  border: 1px solid var(--borda); border-radius: 12px; font-variant-numeric: tabular-nums;
+}
+.tabela-loja th { text-align: left; font-size: 12px; font-weight: 500; color: var(--mudo); padding: 8px 10px; background: var(--superficie-2); white-space: nowrap; }
+.tabela-loja td { padding: 8px 10px; border-top: 1px solid var(--borda); vertical-align: top; }
+.tabela-loja tr[data-href] { cursor: pointer; }
+.tabela-loja tr[data-href]:hover td { background: var(--superficie-2); }
+.tabela-loja small { color: var(--mudo); }
+.tabela-loja .num { text-align: right; white-space: nowrap; }
+.tabela-loja td.vazio { text-align: center; }
+
+.pedido-grade { display: grid; gap: 16px; }
+@media (min-width: 900px) { .pedido-grade { grid-template-columns: 1.4fr 1fr; align-items: start; } }
+.pedido-lado { display: flex; flex-direction: column; gap: 16px; }
+.pedido-totais { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 12px 0 0; }
+.pedido-totais dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.pedido-totais .total { font-weight: 700; font-size: 17px; }
+.pedido-ficha { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 14px; margin: 0; }
+.pedido-ficha dt { color: var(--mudo); }
+.pedido-ficha dd { margin: 0; overflow-wrap: anywhere; }
+.pedido-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.pedido-acoes + .pedido-acoes { margin-top: 10px; }
+.pedido-historico { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.pedido-historico span { color: var(--mudo); }
+.pedido-rodape { display: none; }
+
+/* Janela do pedido aberta pela Agenda da tela inicial (js/loja-pedido.js) */
+.pedido-modal { display: flex; flex-direction: column; gap: 14px; }
+.pedido-modal > p { margin: 0; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pedido-modal .pedido-totais { margin: 0; }
+.pedido-modal .pedido-acoes + .pedido-acoes { margin-top: 0; }
+
+@media print {
+  .sub-topo, .nao-imprimir, #toasts { display: none !important; }
+  .sub-main { padding: 0; }
+  .pedido-grade { grid-template-columns: 1fr 1fr; }
+  .pedido-rodape { display: block; margin-top: 16px; font-size: 11px; }
+  .cartao { border: 1px solid #999; box-shadow: none; }
+}

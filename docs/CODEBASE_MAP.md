@@ -63,12 +63,14 @@ js/
   export.js        CSV e impressão
   preferencias.js  preferências por usuário (menu, atalhos) + arrastar e soltar
   notificacoes.js  avisos de lembrete no aparelho (só com o app aberto)
-  subsite.js       login/permissão das páginas separadas (consultas/, compras/)
+  subsite.js       login/permissão das páginas separadas (consultas/, compras/, loja/)
+  loja.js          pedidos da loja online (Supabase do site): login da loja, fila, status, aviso de pedido novo
   util.js          helpers ($, esc, html, datas, moeda, toast, diálogo)
   modulos/         um "schema" por módulo (campos, alertas, ações)
   paginas/         telas genéricas (início, lista, detalhe, editar, caderno, busca…)
 consultas/         páginas que leem o Trier pela ponte (+ dados demo)
 compras/           Pedido de compras e Histórico de vendas (relatórios do Trier → Firestore)
+loja/              Pedidos da loja online (lidos do Supabase do site, não do Firestore)
 ponte/             servidor Node local para o Postgres do Trier (só leitura)
 docs/              este mapa
 ```
@@ -297,7 +299,18 @@ sequenceDiagram
 - CSS: tokens em `:root` com versão escura automática; classes `lg-t`/`lg-m` são **larguras** (terço/metade); `.so-celular`/`.some-celular`/`.so-desktop` por largura (corte em 860 px).
 - Impressão: acrescenta `.area-impressao` ao `body` com a classe `imprimindo` (`export.js`).
 
+### Pedidos da loja online ([loja/](../loja/), [js/loja.js](../js/loja.js))
+
+- Os pedidos do site da farmácia ficam no **Supabase da loja** (repositório `farmacia`, pasta `site/`), não no Firestore. `js/loja.js` carrega o supabase-js por CDN só quando precisa e usa `LOJA_URL` e `LOJA_CHAVE` (chave pública) do `js/config.js`.
+- **Dois logins:** o do FarmaRotina (Firebase) decide quem vê o módulo `loja`; o da loja (Supabase, conta na tabela `admins`) é feito uma vez por aparelho e fica no localStorage (`farmarotina-loja`). Quem protege os pedidos é o RLS do banco da loja.
+- `loja/pedidos.html` tem as rotas `#/` (fila) e `#/p/<id>` (pedido); muda a situação pela função `admin_mudar_status` do banco. `proximosStatus` espelha as transições dessa função.
+- **Tela inicial:** `pedidosParaInicio()` devolve os pedidos em aberto, que viram cartões na Agenda (`montarAgenda` em `js/paginas/inicio.js`), o aviso de pedidos novos e a métrica. Nada é gravado no Firestore. O clique no cartão (`data-pedido-loja`) abre a janela do pedido de `js/loja-pedido.js`, que carrega o `loja/loja.css` na hora.
+- **Aviso de pedido novo:** `iniciarVigiaPedidos()` (chamado em `js/app.js`) consulta a loja a cada minuto e compara com o maior número já avisado (`farmarotina-loja-ultimo`).
+- No modo demonstração há pedidos de exemplo guardados no localStorage (`farmarotina-loja-demo`).
+
 ## Pegadinhas
+
+- **Pedidos da loja dependem do login da loja no aparelho:** sem ele, a tela inicial mostra o aviso para conectar e a Agenda não lista pedidos. Mudanças no banco da loja (colunas de `pedidos`, `admin_mudar_status`, `admin_resumo_pedidos`) precisam ser refletidas em `js/loja.js`.
 
 - **Regras do Firestore precisam ser publicadas à mão** no console sempre que `firestore.rules` mudar; até lá, as gravações novas dão erro de permissão, inclusive para o admin.
 - **`modulo` ≠ `id`:** vários schemas dividem uma permissão (`afericoes`/`injetaveis` → `saude`; `notas`/`controle` → `notas`; `trocas`/`parceiros` → `trocas`), e `atendimentos` usa `atendimento`.

@@ -12,6 +12,7 @@ import { paginaConfiguracoes } from './paginas/configuracoes.js';
 import { paginaBusca, prepararBusca } from './paginas/busca.js';
 import { paginaCaderno } from './paginas/caderno.js';
 import { iniciarLembretes } from './notificacoes.js';
+import { iniciarVigiaPedidos } from './loja.js';
 import { itensMenu, itensVisiveisNoMenu, itensBarraCelular, aplicarOrdem, prefs, salvarPreferencias, arrastavel } from './preferencias.js';
 import { $, $$, esc, html, icone, toast, mensagemErro } from './util.js';
 
@@ -254,6 +255,7 @@ db.observarAuth(async (u) => {
     db.definirUsuario({ uid: u.uid, nome: p.nome || u.nome });
     montarShell();
     iniciarLembretes();
+    iniciarVigiaPedidos();
     await rotear();
   } catch (e) {
     console.error(e);

@@ -162,6 +162,16 @@ ALTER ROLE farmarotina_leitura SET default_transaction_read_only = on;
 ```
 Além disso a ponte abre toda conexão em modo somente leitura, só aceita pedidos deste computador (127.0.0.1), só do site do FarmaRotina, e confere o login de quem pede (admin ou o módulo da consulta).
 
+### Pedidos da loja online (página separada, na pasta `loja/`)
+Item **Pedidos da loja** no menu → `loja/pedidos.html`, para quem tem o módulo *Pedidos da loja online*. Mostra os pedidos feitos no site da farmácia.
+- **Onde ficam os dados:** no banco do site (Supabase), não no Firebase. O FarmaRotina só lê os pedidos e muda a situação; nada é copiado.
+- **Conectar à loja:** na primeira vez em cada aparelho, a página pede o e-mail e a senha de uma **conta do site com acesso de equipe** (a mesma do painel `/admin/` do site; o acesso é dado pelo `run-equipe.ps1` do repositório do site). A conexão fica guardada no aparelho até alguém clicar em **Desconectar**. Pode ser uma conta só para a farmácia toda ou uma por pessoa.
+- **Fila:** filtros Em aberto, Recebidos, Em separação, Saiu / pronto, Entregues e Cancelados, com a contagem de cada um. Atualiza sozinha a cada minuto.
+- **Pedido:** itens para separar (com o selo *receita* nos de prescrição), cliente, entrega, pagamento e histórico. Botões para avançar a situação (Iniciar separação → Saiu para entrega ou Pronto para retirada → Entregue, ou Cancelar), **Imprimir separação** e **WhatsApp do cliente**.
+- **Na tela inicial:** cada pedido em aberto vira um cartão na **Agenda** (etiqueta *Pedido novo* enquanto ninguém começou a separar; amarelo no dia, vermelho a partir do dia seguinte) e sai dela quando é entregue ou cancelado. **Clicar no cartão abre uma janela com o pedido** (itens, cliente, entrega e os botões para avançar a situação), sem sair da tela inicial; para imprimir, a janela tem o link para a página do pedido. Há também o aviso "Há N pedidos novos da loja online para separar" e o número *Pedidos da loja*.
+- **Aviso de pedido novo:** com o FarmaRotina aberto, ele confere a loja a cada minuto e mostra um aviso na tela; com as notificações ativadas em Configurações, avisa também pelo sistema (Windows ou celular). Com o app fechado não avisa.
+- O endereço e a chave pública da loja ficam em `LOJA_URL` e `LOJA_CHAVE` no `js/config.js` (a chave é pública, como a do Firebase; quem protege os pedidos são as regras do banco da loja).
+
 ### Configurações (cada usuário a sua)
 - **Menu lateral do jeito de cada um:**
   - No computador, o botão de ajustes **Organizar o menu** (ao lado do nome do app) permite arrastar os itens e esconder com o olho.
@@ -259,6 +269,7 @@ Depois de cada push, o site atualiza em 1 ou 2 minutos. O app confere se há ver
 | Trocas e Farmácias parceiras | quem tem *trocas* |
 | Rotinas | quem tem *rotinas* (não vem no perfil Atendente) |
 | Pedido de compras, Histórico de vendas | quem tem o módulo (vêm no perfil Farmacêutico, não no Atendente) |
+| Pedidos da loja online | quem tem o módulo *e* está conectado à loja no aparelho (vem nos perfis Farmacêutico e Atendente) |
 | POPs | todos com o módulo leem; só o admin cria e edita |
 | Excluir qualquer registro ou anexo | só o admin |
 | Usuários | só o admin |
@@ -290,7 +301,9 @@ js/anexos.js, js/export.js                → anexos, CSV e impressão
 js/paginas/*.js                           → telas
 js/subsite.js                             → cabeçalho e login das páginas separadas (compras/ e consultas/)
 compras/                                  → Pedido de compras e Histórico de vendas
+js/loja.js                                → pedidos da loja online (Supabase do site): login da loja, fila, status e aviso de pedido novo
 consultas/                                → Consultas Trier (consulta.html + um .html por módulo, ex.: crediario.html)
+loja/                                     → Pedidos da loja online (pedidos.html)
 ponte/                                    → programa local que lê o banco do Trier (Node, somente leitura)
 firestore.rules                           → segurança
 ```
@@ -354,3 +367,4 @@ Opções que um módulo pode usar (veja os exemplos em `js/modulos/`):
 - **Consultas Trier** (página separada `consultas/consulta.html`): módulos **Crediário** e **Produtos**. Crediário — o que o cliente tem em aberto, conferência dos recebimentos e clientes em atraso, lendo o banco do Trier pela ponte local (`ponte/`), sem guardar nada na nuvem.
 - **DRE** (Consultas Trier, só administradores): resultado por competência e fluxo de caixa lado a lado, visão do ano, classificação das despesas por fornecedor ou descrição e lançamentos manuais (ponte 1.4, rota `/dre`).
 - **DRE → Painel:** aba com indicadores e gráficos dos últimos 6 ou 12 meses.
+- **Pedidos da loja online** (página separada `loja/pedidos.html`): fila e página do pedido lendo o banco do site, pedidos em aberto na Agenda e aviso de pedido novo.
