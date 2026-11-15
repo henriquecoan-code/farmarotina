@@ -231,6 +231,10 @@ service cloud.firestore {
     match /pedido_regras_marca/{marca} {
       allow read, write: if pode('pedido');
     }
+    // Pedido mínimo e desconto de cada indústria/fornecedor (aba Indústria). id = f<fornecedor> ou l<laboratório>
+    match /pedido_industrias/{id} {
+      allow read, write: if pode('pedido');
+    }
 
     // ---------- Histórico de vendas (compras/historico.html) ----------
     // Um documento por mês (id = AAAA-MM). Reimportar o mês substitui; apagar só o admin.

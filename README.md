@@ -92,11 +92,18 @@ Tecnologias: HTML, CSS e JavaScript puros (sem build), Firebase Auth + Firestore
 ### Compras (páginas separadas, na pasta `compras/`)
 Usam o mesmo login do FarmaRotina e aparecem no menu lateral para quem tem o módulo liberado.
 - **Pedido de compras** (`compras/pedido.html`), vindo do antigo "Revisão de Pedido" em Python:
-  - carrega o relatório **Sugestão de Compras** do Trier (.xls) direto no navegador;
-  - calcula a sugestão pelas regras gerais (mínimo por curva A/B/C e Fat de encartelado) e aplica as exceções por marca e por produto ("Lembrar");
-  - exporta o `pedido_site.csv` (`EAN;quantidade`);
-  - a revisão em andamento fica guardada no aparelho até ser descartada;
-  - as regras ficam no Firebase, compartilhadas por toda a equipe.
+  - lê os produtos direto do Trier pela ponte (rota `/compras/produtos`, ponte 1.6), sem precisar do Excel. Sem ponte, a aba Sugestão ainda aceita o relatório **Sugestão de Compras** (.xls);
+  - **abas:**
+    - **Sugestão** (o diário): produtos que venderam no período (padrão: só o dia de hoje), quantidade = mínimo − saldo (mínimo = o maior entre o estoque mínimo do Trier e o mínimo da curva A/B/C; encartelado) e as exceções por marca e por produto ("Lembrar");
+    - **Pedido curto:** zerados que venderam nos últimos N dias (qualquer número; atalhos 7, 30, 90 e 180), todos com 1;
+    - **Indústria:** escolha o laboratório ou o fornecedor e a demanda em dias (30, 45, 60, 90…); quantidade = venda média por dia × dias − saldo. Mostra o total a custo, o desconto e quanto falta para o pedido mínimo (salvos por indústria);
+    - **Parados:** com estoque e sem venda há X dias, com o valor parado;
+    - **Cobertura:** dias de estoque (saldo ÷ venda por dia) em faixas: sem estoque, até 7, 7 a 15, 15 a 90 e mais de 90 dias;
+  - filtros por laboratório, fornecedor, grupo, departamento, categoria e curva;
+  - **Fat (faturação):** quantas unidades vêm na caixa do fornecedor. No pedido 1 = 1 caixa: todo produto com Fat maior que 1 pede 1 (a tela mostra quantas unidades isso dá). O Fat vem da última compra (do fornecedor filtrado, se houver) e pode ser fixado por produto clicando nele;
+  - exporta o `pedido_site.csv` (`EAN;quantidade`), **TXT** (`1 NOME DO PRODUTO` por linha), Excel e impressão;
+  - os ajustes da tela (quantidades, marcações) ficam guardados no aparelho até o fim do dia;
+  - as regras ficam no Firebase, compartilhadas por toda a equipe. Ficam de fora: pedidos pendentes e entradas não confirmadas.
 - **Histórico de vendas** (`compras/historico.html`):
   - importa o relatório **Totais por Produto** do Trier (.xlsx, .xls ou .csv), um mês por vez;
   - mostra receita, custo, margem, gráficos por mês, grupo e laboratório, e o top 20 de produtos, com filtros;
