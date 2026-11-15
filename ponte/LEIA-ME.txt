@@ -1,0 +1,119 @@
+PONTE DO FARMAROTINA - COMO INSTALAR EM UM COMPUTADOR DA FARMÁCIA
+=================================================================
+
+A ponte é um programa pequeno que fica rodando escondido no computador e deixa o
+FarmaRotina ler o sistema da farmácia (Trier) nas telas de Consultas Trier
+(Crediário, Produtos, Orçamento e DRE). Ela só LÊ o banco, nunca altera nada.
+Precisa ser instalada em cada computador que vai usar essas telas.
+
+
+RESUMO (4 passos)
+-----------------
+1. Instale o Node.js (só se o computador ainda não tiver).
+2. Extraia este zip em  C:\FarmaRotinaPonte
+3. Dê duplo clique em  C:\FarmaRotinaPonte\ponte\instalar.bat
+4. Quando o Bloco de Notas abrir, preencha os dados do banco, salve e feche.
+
+Pronto: a ponte abre sozinha toda vez que o Windows iniciar, sem janela.
+
+
+PASSO A PASSO
+-------------
+
+1) NODE.JS
+   - Abra https://nodejs.org e baixe a versão LTS (botão verde).
+   - Instale clicando em Avançar até o fim, sem mudar nada.
+   - Se preferir pelo Prompt de Comando:
+         winget install OpenJS.NodeJS.LTS
+   - Para conferir se já está instalado, no Prompt de Comando:
+         node --version
+     (se aparecer um número, como v22.11.0, está instalado)
+
+2) ONDE COLOCAR OS ARQUIVOS
+   - Clique com o botão direito no zip > Extrair tudo... > destino:  C:\FarmaRotinaPonte
+   - Tem que ficar assim:
+         C:\FarmaRotinaPonte\ponte\instalar.bat
+         C:\FarmaRotinaPonte\ponte\servidor.js
+         C:\FarmaRotinaPonte\ponte\...
+   - Não use uma pasta do OneDrive nem a Área de Trabalho.
+
+3) INSTALAR
+   - Dê duplo clique em  C:\FarmaRotinaPonte\ponte\instalar.bat
+   - Se o Windows perguntar "Deseja abrir este arquivo?", clique em Abrir
+     (ou em "Mais informações" > "Executar assim mesmo").
+   - O instalador faz sozinho:
+       a) confere o Node.js;
+       b) instala as dependências (o mesmo que o comando  npm install );
+       c) cria o arquivo  C:\FarmaRotinaPonte\config.json  e abre no Bloco de Notas;
+       d) liga o início automático com o Windows e já abre a ponte.
+
+4) DADOS DO BANCO (arquivo C:\FarmaRotinaPonte\config.json)
+   Troque só o que está em maiúsculas, mantendo as aspas:
+
+       {
+         "host": "IP-DO-SERVIDOR-DO-TRIER",
+         "porta": 5432,
+         "banco": "NOME-DO-BANCO",
+         "usuario": "farmarotina_leitura",
+         "senha": "SENHA-AQUI"
+       }
+
+   - host:    o IP do servidor do Trier na rede da farmácia.
+   - banco:   o nome do banco de dados do Trier.
+   - usuario e senha: o usuário só de leitura (veja "Usuário do banco", abaixo).
+   - Opcionais, se precisar (acrescente dentro das chaves, separados por vírgula):
+         "filial": 3            (padrão 3)
+         "carenciaJuros": 10    (dias de carência dos juros; padrão 10)
+         "portaPonte": 3790     (porta da ponte; padrão 3790)
+   - O jeito mais fácil: copie o config.json de um computador que já funciona.
+   - ESTE ARQUIVO TEM A SENHA DO BANCO: não envie por e-mail nem WhatsApp e
+     nunca coloque no GitHub.
+
+5) CONFERIR
+   - Abra o FarmaRotina > Consultas Trier. Deve aparecer que a ponte está conectada.
+   - No FarmaRotina, em Usuários, libere os módulos de consulta (Crediário,
+     Produtos, Orçamento) para quem vai usar. O administrador já tem todos.
+
+
+SE NÃO FUNCIONAR
+----------------
+- "O programa de consultas não está rodando neste computador":
+  rode  C:\FarmaRotinaPonte\ponte\inicio-automatico.bat  e tente de novo.
+- Abra  C:\FarmaRotinaPonte\ponte\ponte.log  no Bloco de Notas: o erro fica escrito ali.
+    "Não consegui ler ...config.json"  -> o arquivo não existe ou está com erro de
+                                           digitação (vírgula ou aspas faltando).
+    "password authentication failed"   -> usuário ou senha errados.
+    "ECONNREFUSED" ou "timeout"        -> IP ou porta errados, ou o servidor do Trier
+                                           está desligado ou fora da rede.
+- Para ver os erros na hora, com a janela aberta: rode  parar.bat  e depois  iniciar.bat
+
+
+COMANDOS DO DIA A DIA (todos na pasta C:\FarmaRotinaPonte\ponte)
+----------------------------------------------------------------
+  instalar.bat                    instala tudo (pode rodar de novo sem problema)
+  inicio-automatico.bat           liga o início com o Windows, sem janela
+  inicio-automatico.bat remover   desliga o início com o Windows
+  parar.bat                       encerra a ponte
+  iniciar.bat                     abre a ponte com a janela (para ver erros)
+  iniciar-oculto.vbs              abre a ponte sem janela
+
+
+ATUALIZAR A PONTE
+-----------------
+Quando o FarmaRotina avisar que a ponte está desatualizada:
+  1. Rode  parar.bat
+  2. Baixe o zip de novo (FarmaRotina > Configurações > Ponte do Trier) e extraia
+     em  C:\FarmaRotinaPonte , substituindo os arquivos.
+  3. Rode  instalar.bat  (o config.json com a senha é mantido).
+
+
+USUÁRIO DO BANCO (uma vez só, no servidor do Trier)
+---------------------------------------------------
+Use um usuário só de leitura. No pgAdmin, conectado ao banco do Trier como postgres:
+
+    CREATE ROLE farmarotina_leitura LOGIN PASSWORD 'SENHA-FORTE';
+    GRANT consulta TO farmarotina_leitura;
+    ALTER ROLE farmarotina_leitura SET default_transaction_read_only = on;
+
+Além disso, a ponte abre toda conexão em modo somente leitura, só aceita pedidos
+deste computador e confere o login do FarmaRotina de quem pede.

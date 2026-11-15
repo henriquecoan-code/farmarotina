@@ -221,6 +221,8 @@ Ficam em `usuarios/{uid}.preferencias` e acompanham a pessoa em qualquer aparelh
 - **`explorar.js`:** CLI para descobrir a estrutura do banco sem imprimir dados (`npm run explorar`).
 - **Ciclo de vida:**
   - **Iniciar:** `iniciar.bat`, com janela, ou `iniciar-oculto.vbs`, sem janela e com log em `ponte.log`.
+  - **Instalar em outro computador:** `instalar.bat` (Node.js, `npm install`, `config.json`, início automático) e `inicio-automatico.bat` (abre com o Windows pelo registro do usuário, sem a pergunta de segurança). O passo a passo fica em `LEIA-ME.txt`.
+  - **Zip do instalador:** Configurações → Ponte do Trier. `js/ponte-zip.js` baixa os arquivos de `ponte/` publicados pelo site e monta o zip no navegador (lista em `ARQUIVOS_PONTE`: **arquivo novo na ponte precisa entrar nela**). O `config.json` nunca vai no zip.
   - **Reinício:** o laço do bat reinicia a ponte 10 s depois que ela cai.
   - **Parar:** `parar.bat` cria `parar.flag` e encerra o processo da porta 3790.
 

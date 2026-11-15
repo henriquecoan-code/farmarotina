@@ -5,6 +5,7 @@ import {
 } from '../preferencias.js';
 import { $, $$, esc, html, icone, toast, mensagemErro } from '../util.js';
 import { suportado, permissao, ativas, ativar, desativar } from '../notificacoes.js';
+import { MODULOS, ehAdmin, podeVer } from '../perm.js';
 
 async function salvar(parcial, msg = 'Preferências salvas') {
   try {
@@ -17,6 +18,8 @@ async function salvar(parcial, msg = 'Preferências salvas') {
 
 export async function paginaConfiguracoes(main) {
   main.innerHTML = '';
+  // Quem usa alguma consulta ao Trier (ou é admin) pode baixar o instalador da ponte
+  const usaPonte = ehAdmin() || MODULOS.some((m) => m.grupo === 'consultas' && podeVer(m.id));
   const pagina = html(`<div class="pagina estreita">
     <div class="pagina-topo"><h1>${icone('settings')} Configurações</h1></div>
     <p class="mudo">Estas preferências são só suas e valem no celular e no computador.</p>
@@ -50,6 +53,14 @@ export async function paginaConfiguracoes(main) {
       <div data-notif></div>
     </section>
 
+    ${usaPonte ? `<section class="cartao">
+      <div class="cartao-topo"><h2>${icone('plug-connected')} Ponte do Trier (instalar em outro computador)</h2></div>
+      <p class="mudo pequeno">As Consultas Trier precisam da ponte instalada em cada computador da farmácia. O arquivo abaixo traz
+        tudo o que é preciso e um <b>LEIA-ME.txt</b> com o passo a passo: extraia em <code>C:\\FarmaRotinaPonte</code> e dê duplo clique em
+        <code>ponte\\instalar.bat</code>. A senha do banco não vai no arquivo; ela é pedida na instalação.</p>
+      <button type="button" class="btn pri" data-zip-ponte>${icone('download')} Baixar instalador da ponte (.zip)</button>
+    </section>` : ''}
+
     <div class="acoes"><button type="button" class="btn" data-restaurar>${icone('restore')} Restaurar padrão</button></div>
   </div>`);
   main.append(pagina);
@@ -59,6 +70,19 @@ export async function paginaConfiguracoes(main) {
   desenharAtalhos($('.config-atalhos', pagina));
   $('[data-ocultar-metricas]', pagina).onchange = (e) => salvar({ ocultarMetricas: e.target.checked });
   desenharNotificacoes($('[data-notif]', pagina));
+
+  const zip = $('[data-zip-ponte]', pagina);
+  if (zip) zip.onclick = async () => {
+    zip.disabled = true;
+    try {
+      const { baixarZipPonte } = await import('../ponte-zip.js');
+      const versao = await baixarZipPonte();
+      toast(`Instalador da ponte${versao ? ` v${versao}` : ''} baixado. Abra o LEIA-ME.txt dentro dele.`, 'ok');
+    } catch (e) {
+      toast(e.message || 'Não foi possível baixar.', 'erro');
+    }
+    zip.disabled = false;
+  };
 
   $('[data-restaurar]', pagina).onclick = async () => {
     if (!confirm('Voltar o menu, a barra do celular e os atalhos ao padrão?')) return;

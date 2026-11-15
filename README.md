@@ -143,7 +143,9 @@ Item **Consultas Trier** no menu → `consultas/consulta.html`, uma área à par
 
 **Criar outro módulo de consulta:** consulta SQL em `ponte/consultas.js` + rota em `ponte/servidor.js`; página `.html` + `.js` em `consultas/` usando `iniciar` e `api` de `consultas/js/comum.js`; item em `CONSULTAS` (mesmo arquivo); módulo em `js/perm.js` com `grupo: 'consultas'` (ele já entra no item do menu).
 
-**Instalar a ponte num computador da farmácia:**
+**Instalar a ponte num computador da farmácia (jeito fácil):** no FarmaRotina, abra **Configurações → Ponte do Trier** e clique em **Baixar instalador da ponte (.zip)**. Extraia em `C:\FarmaRotinaPonte` e dê duplo clique em `ponte\instalar.bat`: ele confere o Node.js, instala as dependências, cria o `config.json` (abre no Bloco de Notas para preencher os dados do banco) e liga o início automático. O zip traz um **LEIA-ME.txt** com o passo a passo, os comandos e o que fazer quando não conecta. A senha do banco não vai no zip.
+
+**Instalar à mão (os mesmos passos, um por um):**
 1. Ter o [Node.js](https://nodejs.org) instalado.
 2. Copiar a pasta `ponte/` do repositório e, dentro dela, rodar `npm install` uma vez.
 3. Criar `C:\FarmaRotinaPonte\config.json` a partir do `ponte/config.exemplo.json` (servidor, banco, usuário e senha). **Esse arquivo nunca vai para o GitHub.** Opcionais: `filial` (padrão 3), `carenciaJuros` (padrão 10 dias), `portaPonte` (padrão 3790).
@@ -151,7 +153,7 @@ Item **Consultas Trier** no menu → `consultas/consulta.html`, uma área à par
    - **`ponte/iniciar-oculto.vbs` (recomendado):** sem nenhuma janela. Ela reinicia sozinha se cair, e o que ela escreve fica em `ponte/ponte.log`. Para encerrar, use **`ponte/parar.bat`**.
    - **`ponte/iniciar.bat`:** com a janela do CMD aberta, útil para ver erros na hora. Para encerrar, feche a janela.
 
-   Para abrir junto com o Windows: `Win + R` → `shell:startup` → colar ali um **atalho do `iniciar-oculto.vbs`** (no lugar do atalho antigo do `iniciar.bat`).
+   Para abrir junto com o Windows: dê duplo clique em **`ponte/inicio-automatico.bat`**, uma vez em cada computador. Ele registra a ponte para abrir sozinha, sem janela e sem a pergunta de segurança do Windows ("Deseja abrir este arquivo?"), e remove o atalho antigo da pasta Inicializar, se houver. Para desligar: `inicio-automatico.bat remover`.
 5. No FarmaRotina, liberar os módulos de consulta (ex.: **Crediário**) para quem vai usar (admin já tem).
 
 **Usuário do banco:** use um usuário só de leitura. No Trier o grupo `consulta` já tem leitura de tudo; no pgAdmin, conectado ao banco do Trier como `postgres`:
