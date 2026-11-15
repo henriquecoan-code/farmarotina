@@ -64,15 +64,20 @@ export function calcularSugestao(row, config) {
     return [null, `Encartelado (Fat=${Math.trunc(row.fat)}) - ainda acima do mínimo (saldo ${Math.trunc(row.saldo)} > mínimo ${Math.trunc(row.estoque_minimo)})`];
   }
 
-  const alvo = Math.max(minimoCurva, row.qtd_comp_sistema);
+  // Alvo = o maior entre o mínimo da curva (regra geral), o estoque mínimo do Trier e o que vendeu no período.
+  // Ex.: mínimo do Trier 4 e saldo 2 → pede 2, mesmo que no período tenha vendido menos.
+  const minimoTrier = Number(row.estoque_minimo) || 0;
+  const alvo = Math.max(minimoCurva, minimoTrier, row.qtd_comp_sistema);
+  const deOnde = alvo === row.qtd_comp_sistema && alvo > Math.max(minimoCurva, minimoTrier) ? 'pelas vendas do período'
+    : alvo === minimoTrier && minimoTrier > minimoCurva ? 'pelo estoque mínimo' : `pelo mínimo da curva ${row.curva}`;
   const necessidade = alvo - row.saldo;
-  if (necessidade <= 0) return [null, `Estoque já no nível ideal (saldo ${Math.trunc(row.saldo)} >= alvo ${Math.trunc(alvo)})`];
+  if (necessidade <= 0) return [null, `Estoque já no nível ideal (saldo ${Math.trunc(row.saldo)} >= alvo ${Math.trunc(alvo)}, ${deOnde})`];
 
   // Produto vendido por faturação (caixa/display com várias unidades): no pedido 1 = 1 caixa fechada.
   // Vai sempre 1; a quantidade é conferida antes de mandar o pedido ao fornecedor.
   if (row.fat > 1) return [1, `Vende por caixa (Fat=${Math.trunc(row.fat)}): pede 1 caixa · precisa de ${Math.ceil(necessidade)} un`];
   const quantidade = Math.ceil(necessidade);
-  return [quantidade, `Precisa de ${quantidade} (alvo ${Math.trunc(alvo)} − saldo ${Math.trunc(row.saldo)})`];
+  return [quantidade, `Precisa de ${quantidade} (alvo ${Math.trunc(alvo)} ${deOnde} − saldo ${Math.trunc(row.saldo)})`];
 }
 
 // Lista final: sugestão automática + regra da marca (genérica) + regra do EAN (específica, tem a última palavra)

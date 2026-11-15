@@ -43,7 +43,7 @@ const estado = {
   aba: 'sugestao',
   de: hoje(), ate: hoje(), // Sugestão: vendas do próprio dia (pode mudar na tela)
   f: { busca: '', lab: '', forn: '', grupo: '', depto: '', cat: '', curva: '' },
-  curtoDias: 30, indDias: 30, indBase: 90, indTodos: false, paradosDias: 90, cobBase: 90, cobFaixa: '',
+  sugMinimo: false, curtoDias: 30, indDias: 30, indBase: 90, indTodos: false, paradosDias: 90, cobBase: 90, cobFaixa: '',
   ajustes: {}, // { aba: { chave: { qtd, incluir, obs } } }
 };
 
@@ -222,7 +222,9 @@ function itensSugestao() {
       motivo: i.motivo_sugestao, origem: i.origem_decisao === 'automatico' ? '' : i.origem_decisao, obs: i.observacao || '',
     })).filter((i) => passaBusca(`${i.produto} ${i.lab} ${i.ean}`));
   }
-  const prods = base.produtos.filter((p) => Number(p.periodo) > 0 && passaFiltros(p) && passaBusca(`${p.nome} ${nomeLab(p)} ${p.ean}`));
+  // Venderam no período ou (opção) estão abaixo do estoque mínimo do Trier mesmo sem venda no período
+  const entra = (p) => Number(p.periodo) > 0 || (estado.sugMinimo && Number(p.saldo) < Number(p.minimo));
+  const prods = base.produtos.filter((p) => entra(p) && passaFiltros(p) && passaBusca(`${p.nome} ${nomeLab(p)} ${p.ean}`));
   const linhas = prods.map((p) => ({
     id: p.id, ean: p.chave, produto: p.nome, marca: nomeLab(p), curva: p.curva, saldo: Number(p.saldo),
     estoque_minimo: Number(p.minimo), demanda: Number(p.demanda), qtd_comp_sistema: Number(p.periodo), fat: fatDe(p).fat,
@@ -375,7 +377,8 @@ function painelParametros() {
       return `<div class="parametros cartao">
         <span class="mudo">Vendas de</span><input type="date" data-p="de" value="${e.de}" max="${hoje()}"><span class="mudo">até</span><input type="date" data-p="ate" value="${e.ate}" max="${hoje()}">
         <button type="button" class="btn" data-ler-periodo>${icone('refresh')} Aplicar período</button>
-        <span class="mudo pequeno">Como no relatório do Trier: produtos que venderam no período; quantidade = vendas do período, com as regras de curva e Fat.</span>
+        <label class="check pequeno"><input type="checkbox" data-p="sugMinimo" ${e.sugMinimo ? 'checked' : ''}><span>Incluir também os abaixo do estoque mínimo que não venderam no período</span></label>
+        <span class="mudo pequeno">Quantidade = o maior entre o mínimo da curva, o estoque mínimo do Trier e as vendas do período, menos o saldo (com as regras de Fat).</span>
         ${blocoExcel(false)}</div>`;
     case 'curto':
       return `<div class="parametros cartao"><span>Zerados (saldo ≤ 0) que venderam nos últimos</span>
