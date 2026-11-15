@@ -62,9 +62,11 @@ export async function paginaCaderno(main, schema, registroId, query) {
     await carregarLista(raiz, schema, e);
   }
 
-  raiz.dataset.aberto = registroId || '';
+  // Sem anotação aberta, o lado direito mostra o resumo (no celular ele só aparece ao tocar em "Resumo")
+  raiz.dataset.aberto = registroId || 'resumo';
   raiz.classList.toggle('com-nota', !!registroId);
   marcarAtivo(raiz);
+  if (!registroId || registroId === 'resumo') return abrirResumo(raiz, schema, e);
   await abrirEditor(raiz, schema, e, registroId, query);
 }
 
@@ -85,7 +87,12 @@ function desenharLista(raiz, schema, e) {
     .filter((d) => !termo || normalizar(`${d.titulo} ${d.texto} ${d.categoria}`).includes(termo))
     .sort(ORDENS[e.ordem]?.fn || ORDENS.recentes.fn);
   $('[data-total]', raiz).textContent = `${lista.length} anotação(ões)${lista.length !== (e.docs || []).length ? ` de ${e.docs.length}` : ''}`;
-  $('[data-itens]', raiz).innerHTML = lista.length ? lista.map((d) => {
+  // Primeiro item fixo: o resumo das anotações ainda em aberto
+  const abertas = emAberto(e).length;
+  const resumo = `<a class="caderno-item caderno-resumo" href="#/m/${schema.id}/resumo" data-id="resumo">
+    <div class="caderno-item-topo"><b>${icone('list-check')} Resumo</b><span class="caderno-resumo-n ${abertas ? '' : 'zero'}">${abertas ? `${abertas} em aberto` : 'tudo resolvido'}</span></div>
+  </a>`;
+  $('[data-itens]', raiz).innerHTML = resumo + (lista.length ? lista.map((d) => {
     const a = schema.alerta?.(d);
     return `<a class="caderno-item ${a ? 'com-lembrete' : ''} ${d.resolvido ? 'resolvida' : ''}" href="#/m/${schema.id}/${esc(d.id)}" data-id="${esc(d.id)}">
       <div class="caderno-item-topo"><b>${esc(d.titulo || '(sem título)')}</b>${d.nAnexos > 0 ? icone('paperclip') : ''}${d.resolvido ? `<span class="caderno-ok" title="Resolvida">${icone('check')}</span>` : ''}</div>
@@ -93,8 +100,73 @@ function desenharLista(raiz, schema, e) {
         ${d.lembrete && !d.resolvido ? `<span class="caderno-lembrete ${a ? 'atrasado' : ''}">${icone('bell')} ${fmtData(d.lembrete).slice(0, 5)}${String(d.lembrete).length > 10 ? ` ${String(d.lembrete).slice(11, 16)}` : ''}</span>` : ''}</div>
       <div class="caderno-item-texto">${esc(String(d.texto || '').slice(0, 110))}</div>
     </a>`;
-  }).join('') : `<div class="vazio">${(e.docs || []).length ? 'Nada encontrado com esses filtros.' : 'Nenhuma anotação ainda.'}</div>`;
+  }).join('') : `<div class="vazio">${(e.docs || []).length ? 'Nada encontrado com esses filtros.' : 'Nenhuma anotação ainda.'}</div>`);
   marcarAtivo(raiz);
+}
+
+// Anotações ainda não resolvidas: lembretes vencidos primeiro, depois as mais antigas
+const emAberto = (e) => (e.docs || []).filter((d) => !d.resolvido)
+  .sort((a, b) => pesoLembrete(a) - pesoLembrete(b) || String(a.dataHora).localeCompare(String(b.dataHora)));
+
+function abrirResumo(raiz, schema, e) {
+  const editor = $('[data-editor]', raiz);
+  const todas = emAberto(e);
+  const editavel = podeEditar(schema);
+  // Filtro por categoria (com a contagem de cada uma); "" = todas
+  const categorias = schema.campos.find((c) => c.k === 'categoria')?.opcoes || [];
+  const conta = (cat) => todas.filter((d) => d.categoria === cat).length;
+  // Categoria escolhida que ficou sem pendências (ex.: acabou de resolver a última) volta para "Todas"
+  if (e.resumoCat && !conta(e.resumoCat)) e.resumoCat = '';
+  const lista = e.resumoCat ? todas.filter((d) => d.categoria === e.resumoCat) : todas;
+  const chip = (cat, rot, n) => `<button type="button" class="resumo-chip ${(e.resumoCat || '') === cat ? 'ativo' : ''}" data-resumo-cat="${esc(cat)}" aria-pressed="${(e.resumoCat || '') === cat}">${esc(rot)} <span>${n}</span></button>`;
+  editor.innerHTML = '';
+  editor.append(html(`<div class="caderno-editor-topo">
+    <a class="voltar so-celular" href="#/m/${schema.id}">${icone('arrow-left')} ${esc(schema.nome)}</a>
+    <div class="caderno-editor-titulo"><h2>${icone('list-check')} Em aberto <span class="mudo">(${todas.length})</span></h2></div>
+    <div class="mudo pequeno">Anotações que ainda faltam resolver. Clique numa linha para abrir.</div>
+  </div>`));
+  if (!todas.length) {
+    editor.append(html(`<div class="caderno-vazio">${icone('circle-check')}<p>Nenhuma anotação em aberto.</p></div>`));
+    return;
+  }
+  editor.append(html(`<div class="resumo-filtro" role="group" aria-label="Filtrar por categoria">
+    ${chip('', 'Todas', todas.length)}${categorias.filter(conta).map((c) => chip(c, c, conta(c))).join('')}
+  </div>`));
+  editor.querySelectorAll('[data-resumo-cat]').forEach((b) => {
+    b.onclick = () => { e.resumoCat = b.dataset.resumoCat; abrirResumo(raiz, schema, e); };
+  });
+  editor.append(html(`<div class="resumo-abertas"><table class="mini-tabela">
+    <thead><tr><th>Anotação</th><th>Data</th><th>Lembrete</th>${editavel ? '<th></th>' : ''}</tr></thead>
+    <tbody>${lista.map((d) => {
+      const a = schema.alerta?.(d);
+      const lembrete = d.lembrete ? `${fmtData(d.lembrete).slice(0, 5)}${String(d.lembrete).length > 10 ? ` ${String(d.lembrete).slice(11, 16)}` : ''}` : '—';
+      return `<tr data-abrir="${esc(d.id)}" class="${a ? 'com-alerta' : ''}">
+        <td><b>${esc(d.titulo || '(sem título)')}</b>${d.categoria ? `<small>${esc(d.categoria)}</small>` : ''}</td>
+        <td class="sem-quebra">${fmtData(d.dataHora)}</td>
+        <td class="sem-quebra ${a ? 'lembrete-atrasado' : 'mudo'}">${d.lembrete ? icone('bell') : ''} ${lembrete}</td>
+        ${editavel ? `<td class="acao"><button type="button" class="btn pequeno ok" data-resolver-id="${esc(d.id)}" title="Marcar como resolvida">${icone('check')}<span class="some-celular"> Resolvido</span></button></td>` : ''}
+      </tr>`;
+    }).join('')}</tbody></table></div>`));
+
+  editor.querySelectorAll('tr[data-abrir]').forEach((tr) => {
+    tr.onclick = (ev) => { if (!ev.target.closest('button')) location.hash = `#/m/${schema.id}/${tr.dataset.abrir}`; };
+  });
+  editor.querySelectorAll('[data-resolver-id]').forEach((b) => {
+    b.onclick = async () => {
+      b.disabled = true;
+      try {
+        await db.atualizar(schema.id, b.dataset.resolverId, { resolvido: true });
+        const doc = (e.docs || []).find((d) => d.id === b.dataset.resolverId);
+        if (doc) doc.resolvido = true;
+        toast('Anotação marcada como resolvida', 'ok');
+        desenharLista(raiz, schema, e);
+        abrirResumo(raiz, schema, e);
+      } catch (err) {
+        b.disabled = false;
+        toast(mensagemErro(err), 'erro');
+      }
+    };
+  });
 }
 
 function marcarAtivo(raiz) {

@@ -777,3 +777,30 @@ input[type=checkbox], input[type=radio] { width: auto; min-height: 0; accent-col
 .caderno-editor-titulo h2 .selo-texto { font-size: 12px; vertical-align: middle; margin-left: 4px; }
 .caderno-item.resolvida b { color: var(--texto-2); }
 .caderno-item .caderno-ok { color: var(--ok); display: inline-flex; margin-left: auto; }
+
+/* ---------- caderno: resumo das anotações em aberto ---------- */
+.caderno-resumo { background: var(--superficie-2); }
+.caderno-resumo b { display: inline-flex; align-items: center; gap: 5px; }
+.caderno-resumo b .ti { color: var(--pri); }
+.caderno-resumo-n { font-size: 12px; font-weight: 600; color: var(--atencao); white-space: nowrap; }
+.caderno-resumo-n.zero { color: var(--ok); font-weight: 500; }
+.resumo-abertas { background: var(--superficie); border: 1px solid var(--borda); border-radius: 12px; overflow: hidden; }
+.resumo-abertas .mini-tabela { font-size: 13px; }
+.resumo-abertas .mini-tabela th, .resumo-abertas .mini-tabela td { padding: 5px 10px; vertical-align: middle; }
+.resumo-abertas .mini-tabela td small { display: inline; margin-left: 6px; font-size: 11px; }
+.resumo-abertas tr[data-abrir] { cursor: pointer; }
+.resumo-abertas tr[data-abrir]:hover td { background: var(--superficie-2); }
+.resumo-abertas .sem-quebra { white-space: nowrap; }
+.resumo-abertas .lembrete-atrasado { color: var(--atencao); font-weight: 600; }
+.resumo-abertas td.acao { text-align: right; width: 1%; }
+.resumo-abertas .btn.pequeno { min-height: 26px; padding: 2px 8px; font-size: 12px; }
+@media (max-width: 860px) {
+  .resumo-abertas .mini-tabela th, .resumo-abertas .mini-tabela td { padding: 5px 6px; }
+  .resumo-abertas .mini-tabela td small { display: block; margin-left: 0; }
+}
+.resumo-filtro { display: flex; flex-wrap: wrap; gap: 6px; }
+.resumo-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; min-height: 28px; border: 1px solid var(--borda); border-radius: 999px; background: var(--superficie); color: var(--texto-2); font: inherit; font-size: 12px; cursor: pointer; }
+.resumo-chip span { font-weight: 600; color: var(--mudo); }
+.resumo-chip:hover { background: var(--superficie-2); }
+.resumo-chip.ativo { background: var(--pri-claro); border-color: var(--pri); color: var(--pri-escuro); }
+.resumo-chip.ativo span { color: var(--pri-escuro); }
